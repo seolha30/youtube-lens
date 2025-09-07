@@ -1,0 +1,13 @@
+{
+  "name": "youtube-lens",
+  "version": "1.0.0",
+  "description": "YouTube Analytics Tool",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "keywords": ["youtube", "analytics", "lens"],
+  "author": "Seol (Tubelens)",
+  "license": "MIT"
+}
