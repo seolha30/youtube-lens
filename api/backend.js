@@ -360,31 +360,30 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         publishedBefore = new Date(endDate + 'T23:59:59+09:00').toISOString();
         
     } else if (timeFrame) {
-        // 기본 기간 옵션들 (한국시간 기준) - test.html과 동일
+        // 기본 기간 옵션들 (한국시간 기준)
         const now = new Date();
-        const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
         
         switch(timeFrame) {
             case 'hour':
-                publishedAfter = new Date(koreaTime.getTime() - 60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 60*60*1000).toISOString();
                 break;
             case 'day':
-                publishedAfter = new Date(koreaTime.getTime() - 24*60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 24*60*60*1000).toISOString();
                 break;
             case 'week':
-                publishedAfter = new Date(koreaTime.getTime() - 7*24*60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 7*24*60*60*1000).toISOString();
                 break;
             case 'month':
-                publishedAfter = new Date(koreaTime.getTime() - 30*24*60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 30*24*60*60*1000).toISOString();
                 break;
             case '3months':
-                publishedAfter = new Date(koreaTime.getTime() - 90*24*60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 90*24*60*60*1000).toISOString();
                 break;
             case '6months':
-                publishedAfter = new Date(koreaTime.getTime() - 180*24*60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 180*24*60*60*1000).toISOString();
                 break;
             case 'year':
-                publishedAfter = new Date(koreaTime.getTime() - 365*24*60*60*1000).toISOString();
+                publishedAfter = new Date(now.getTime() - 365*24*60*60*1000).toISOString();
                 break;
         }
     }
