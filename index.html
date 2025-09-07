@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -989,11 +990,6 @@
             pointer-events: none;
         }
 
-        /* 라이센스 입력 자동 포맷팅 */
-        .license-input {
-            text-transform: uppercase;
-        }
-
         @media (max-width: 768px) {
             .header {
                 padding: 10px 20px;
@@ -1334,8 +1330,8 @@
                 <input type="text" 
                        class="license-input" 
                        id="license-input" 
-                       placeholder="라이센스키 입력 (XXXX-XXXX-XXXX-XXXX)"
-                       maxlength="19">
+                       placeholder="라이센스키 입력"
+                       maxlength="30">
                 
                 <button class="btn auth-btn" id="auth-btn">🚀 보안 인증</button>
                 <button class="btn logout-btn hidden" id="logout-btn">🔓 인증 해제</button>
@@ -1544,24 +1540,12 @@
             }
         }
 
-        // 라이센스키 포맷팅 (XXXX-XXXX-XXXX-XXXX)
-        function formatLicenseKey(value) {
-            const cleaned = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-            const formatted = cleaned.replace(/(.{4})/g, '$1-').replace(/-$/, '');
-            return formatted.substring(0, 19); // 최대 길이 제한
-        }
-
         // 인증 버튼 클릭
         authBtn.addEventListener('click', async function() {
             const licenseKey = licenseInput.value.trim();
             
             if (!licenseKey) {
                 authInfo.textContent = '라이센스키를 입력하세요';
-                return;
-            }
-            
-            if (licenseKey.length < 19) {
-                authInfo.textContent = '올바른 라이센스키 형식이 아닙니다 (XXXX-XXXX-XXXX-XXXX)';
                 return;
             }
             
@@ -1606,19 +1590,6 @@
             authModal.style.display = 'none';
             document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
         }
-
-        // 라이센스키 입력 포맷팅
-        licenseInput.addEventListener('input', function(e) {
-            const cursorPosition = e.target.selectionStart;
-            const oldValue = e.target.value;
-            const newValue = formatLicenseKey(oldValue);
-            
-            e.target.value = newValue;
-            
-            // 커서 위치 조정
-            const newCursorPosition = cursorPosition + (newValue.length - oldValue.length);
-            e.target.setSelectionRange(newCursorPosition, newCursorPosition);
-        });
 
         // Enter 키 처리
         licenseInput.addEventListener('keypress', function(e) {
