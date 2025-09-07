@@ -1830,6 +1830,8 @@
                     videoLicense: isAllVideos ? 'any' : 'creativeCommon'
                 };
                 
+                console.log('📤 프론트엔드에서 보내는 데이터:', searchParams);
+                
                 const result = await callBackendAPI('search', searchParams);
                 
                 originalResults = result.data;
