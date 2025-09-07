@@ -342,7 +342,7 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         else if (ciiScore >= 10) cii = 'Not bad';
         
         // 쇼츠 여부 판단 (영상 길이 60초 이하를 쇼츠로 간주) - test.html과 동일
-        const durationParts = video.contentDetails.duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const durationParts = video.contentDetails?.duration?.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
         let totalSeconds = 0;
         if (durationParts) {
             const hours = durationParts[1] ? parseInt(durationParts[1].replace('H', '')) : 0;
@@ -354,13 +354,13 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
 
         return {
             index: index + 1,
-            thumbnail: video.snippet.thumbnails?.default?.url || '',
-            title: video.snippet.title,
-            channelTitle: video.snippet.channelTitle,
-            channelId: video.snippet.channelId, // 채널 ID 추가
-            duration: formatDuration(video.contentDetails.duration),
-            publishedAt: formatDate(video.snippet.publishedAt),
-            publishedAtRaw: video.snippet.publishedAt, // 정렬용 원시 데이터 추가
+            thumbnail: video.snippet?.thumbnails?.default?.url || '',
+            title: video.snippet?.title || '',
+            channelTitle: video.snippet?.channelTitle || '',
+            channelId: video.snippet?.channelId || '', // 채널 ID 추가
+            duration: formatDuration(video.contentDetails?.duration || ''),
+            publishedAt: formatDate(video.snippet?.publishedAt || ''),
+            publishedAtRaw: video.snippet?.publishedAt || '', // 정렬용 원시 데이터 추가
             subscriberCount: subscriberCount,
             viewCount: viewCount,
             contributionValue: parseFloat(contributionValue.toFixed(2)), // 정렬용 숫자값
@@ -370,11 +370,11 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
             commentCount: commentCount,
             likeCount: likeCount,
             totalVideos: parseInt(channel?.statistics?.videoCount || 0),
-            videoId: video.id,
+            videoId: video.id || '',
             license: video.status?.license || 'youtube',
             isShorts: isShorts,
             engagementRate: viewCount > 0 ? parseFloat(((likeCount + commentCount) / viewCount * 100).toFixed(1)) : 0, // 정렬용 숫자값
-            description: video.snippet.description || '' // 설명 추가
+            description: video.snippet?.description || '' // 설명 추가
         };
     });
 
@@ -467,7 +467,9 @@ async function fetchSingleVideoData(videoId, apiKeys) {
         const video = videosData.items[0];
         
         // 2. 채널 정보 가져오기
-        const channelId = video.snippet.channelId;
+        const channelId = video.snippet?.channelId;
+        if (!channelId) return null;
+        
         const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?` +
             `key=APIKEY_PLACEHOLDER&` +
             `id=${channelId}&` +
@@ -500,7 +502,7 @@ async function fetchSingleVideoData(videoId, apiKeys) {
         else if (ciiScore >= 10) cii = 'Not bad';
         
         // 쇼츠 여부 판단 (영상 길이 60초 이하를 쇼츠로 간주)
-        const durationParts = video.contentDetails.duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const durationParts = video.contentDetails?.duration?.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
         let totalSeconds = 0;
         if (durationParts) {
             const hours = durationParts[1] ? parseInt(durationParts[1].replace('H', '')) : 0;
@@ -513,13 +515,13 @@ async function fetchSingleVideoData(videoId, apiKeys) {
         // 결과 객체 생성 (기존 displayResults 함수와 호환)
         return {
             index: 1,
-            thumbnail: video.snippet.thumbnails?.default?.url || '',
-            title: video.snippet.title,
-            channelTitle: video.snippet.channelTitle,
-            channelId: video.snippet.channelId,
-            duration: formatDuration(video.contentDetails.duration),
-            publishedAt: formatDate(video.snippet.publishedAt),
-            publishedAtRaw: video.snippet.publishedAt,
+            thumbnail: video.snippet?.thumbnails?.default?.url || '',
+            title: video.snippet?.title || '',
+            channelTitle: video.snippet?.channelTitle || '',
+            channelId: video.snippet?.channelId || '',
+            duration: formatDuration(video.contentDetails?.duration || ''),
+            publishedAt: formatDate(video.snippet?.publishedAt || ''),
+            publishedAtRaw: video.snippet?.publishedAt || '',
             subscriberCount: subscriberCount,
             viewCount: viewCount,
             contributionValue: parseFloat(contributionValue.toFixed(2)),
@@ -529,11 +531,11 @@ async function fetchSingleVideoData(videoId, apiKeys) {
             commentCount: commentCount,
             likeCount: likeCount,
             totalVideos: parseInt(channel.statistics?.videoCount || 0),
-            videoId: video.id,
+            videoId: video.id || '',
             license: video.status?.license || 'youtube',
             isShorts: isShorts,
             engagementRate: viewCount > 0 ? parseFloat(((likeCount + commentCount) / viewCount * 100).toFixed(1)) : 0,
-            description: video.snippet.description || ''
+            description: video.snippet?.description || ''
         };
         
     } catch (error) {
@@ -594,9 +596,13 @@ function applyFilters(results, filters) {
     return filteredResults;
 }
 
-// 유틸리티 함수들 (test.html과 동일)
+// 유틸리티 함수들 (test.html과 동일, null 체크 추가)
 function formatDuration(duration) {
+    if (!duration) return '0:00';
+    
     const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    if (!match) return '0:00';
+    
     const hours = (match[1] || '').replace('H', '');
     const minutes = (match[2] || '').replace('M', '');
     const seconds = (match[3] || '').replace('S', '');
@@ -609,10 +615,16 @@ function formatDuration(duration) {
 }
 
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    // 한국시간으로 명시적 변환
-    return date.toLocaleDateString('ko-KR', {timeZone: 'Asia/Seoul'}) + ' ' + 
-           date.toLocaleTimeString('ko-KR', {timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit'});
+    if (!dateStr) return '알 수 없음';
+    
+    try {
+        const date = new Date(dateStr);
+        // 한국시간으로 명시적 변환
+        return date.toLocaleDateString('ko-KR', {timeZone: 'Asia/Seoul'}) + ' ' + 
+               date.toLocaleTimeString('ko-KR', {timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit'});
+    } catch (error) {
+        return '알 수 없음';
+    }
 }
 
 // YouTube URL에서 비디오 ID 추출 함수 (test.html과 동일)
