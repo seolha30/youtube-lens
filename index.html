@@ -917,22 +917,49 @@
         }
 
         .logout-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
             background: linear-gradient(135deg, #ff9800, #f57c00);
-            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .logout-btn:hover {
             background: linear-gradient(135deg, #f57c00, #ef6c00);
-        }
-
-        .continue-btn {
-            background: linear-gradient(135deg, #4caf50, #45a049);
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
-            margin-top: 20px;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 152, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
         .continue-btn:hover {
             background: linear-gradient(135deg, #45a049, #388e3c);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .continue-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .auth-main-content {
@@ -1335,26 +1362,7 @@
                 
                 <button class="btn auth-btn" id="auth-btn">🚀 보안 인증</button>
                 <button class="btn logout-btn hidden" id="logout-btn">🔓 인증 해제</button>
-            </div>
-            
-            <!-- 메인 콘텐츠 (인증 후에만 표시) -->
-            <div class="auth-main-content hidden" id="auth-main-content">
-                <strong>📋 사용 방법:</strong><br>
-                1. 좌측 사이드바에서 검색 조건 설정<br>
-                2. 키워드 입력 후 검색 버튼 클릭<br>
-                3. 결과 테이블에서 데이터 확인<br>
-                4. 필터 및 정렬 기능 활용
-                
-                <div class="auth-features">
-                    <div class="feature-item"><span class="icon">🔍</span> YouTube 영상 검색</div>
-                    <div class="feature-item"><span class="icon">📊</span> CII 점수 계산</div>
-                    <div class="feature-item"><span class="icon">🎚️</span> 고급 필터링</div>
-                    <div class="feature-item"><span class="icon">📈</span> 채널 기여도 분석</div>
-                    <div class="feature-item"><span class="icon">🎬</span> URL 직접 분석</div>
-                    <div class="feature-item"><span class="icon">⚡</span> 실시간 데이터 처리</div>
-                </div>
-                
-                <button class="btn continue-btn" onclick="continueToApp()">📱 앱 시작하기</button>
+                <button class="btn continue-btn hidden" id="continue-btn" onclick="continueToApp()">📱 앱 시작하기</button>
             </div>
             
             <div class="auth-footer">
@@ -1426,7 +1434,7 @@
         const licenseInput = document.getElementById('license-input');
         const authBtn = document.getElementById('auth-btn');
         const logoutBtn = document.getElementById('logout-btn');
-        const authMainContent = document.getElementById('auth-main-content');
+        const continueBtn = document.getElementById('continue-btn');
 
         // 현재 사용 중인 API 키 반환 (로테이션 지원)
         function getCurrentApiKey() {
@@ -1613,9 +1621,7 @@
                 licenseInput.style.display = 'none';
                 authBtn.style.display = 'none';
                 logoutBtn.classList.remove('hidden');
-                
-                // 메인 콘텐츠 표시
-                authMainContent.classList.remove('hidden');
+                continueBtn.classList.remove('hidden');
                 
                 userAuthenticated = true;
                 
@@ -1635,9 +1641,7 @@
                 licenseInput.style.display = 'block';
                 authBtn.style.display = 'block';
                 logoutBtn.classList.add('hidden');
-                
-                // 메인 콘텐츠 숨기기
-                authMainContent.classList.add('hidden');
+                continueBtn.classList.add('hidden');
                 
                 userAuthenticated = false;
             }
@@ -2429,12 +2433,13 @@
                     const fakeViews = Math.floor(Math.random() * 100000 + 10000);
                     
                     return `
-                        <div onclick="showVideoModal('${videoId}', '${videoSnippet.title.replace(/'/g, "&apos;")}')" 
-                             style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 12px; cursor: pointer; transition: background 0.2s;"
+                        <div style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 12px; transition: background 0.2s;"
                              onmouseover="this.style.background='rgba(255,255,255,1)'" 
                              onmouseout="this.style.background='rgba(255,255,255,0.9)'">
                             <img src="${videoSnippet.thumbnails.medium?.url || videoSnippet.thumbnails.default?.url}" 
-                                 style="width: 100%; height: 165px; object-fit: cover; border-radius: 4px; margin-bottom: 10px;" 
+                                 alt="영상 인네일"
+                                 onclick="window.open('https://www.youtube.com/watch?v=${videoId}', '_blank')"
+                                 style="width: 100%; height: 165px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 10px;" 
                                  onerror="this.style.display='none'">
                             <div style="color: #1A365D; font-size: 11px; font-weight: bold; line-height: 1.2; margin-bottom: 8px; height: 60px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
                                 ${videoSnippet.title.length > 60 ? videoSnippet.title.substring(0, 60) + '...' : videoSnippet.title}
@@ -3071,6 +3076,92 @@
             };
             
             document.body.appendChild(modal);
+        }
+        
+        // 비디오 모달 표시
+        function showVideoModal(videoId, videoTitle) {
+            // 기존 모달 제거
+            const existingModal = document.getElementById('videoModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 모달 HTML 생성
+            const modalHtml = `
+                <div class="settings-modal" id="videoModal" style="display: block;">
+                    <div class="settings-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
+                        <button class="close-btn" onclick="closeVideoModal()">&times;</button>
+                        <h3 style="margin-bottom: 20px; color: #2196F3;">🎬 영상 재생</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <strong style="color: white; font-size: 16px;">비디오 제목:</strong>
+                            <div style="margin-top: 8px; padding: 12px; background: #2a2a2a; border-radius: 6px; color: #fff; font-size: 14px; line-height: 1.4;">${videoTitle}</div>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+                            <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: 8px;" 
+                                    src="https://www.youtube.com/embed/${videoId}" 
+                                    allowfullscreen>
+                            </iframe>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                            <button class="btn" onclick="window.open('https://www.youtube.com/watch?v=${videoId}', '_blank')" 
+                                    style="background: #f44336; color: white; flex: 1; min-width: 120px;">📺 YouTube 열기</button>
+                            <button class="btn" onclick="collectSubtitle('${videoId}')" 
+                                    style="background: #4CAF50; color: white; flex: 1; min-width: 120px;">🎤 자막수집</button>
+                            <button class="btn" onclick="closeVideoModal()" 
+                                    style="background: #666; color: white; flex: 1; min-width: 100px;">✖ 닫기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        // 비디오 모달 닫기
+        function closeVideoModal() {
+            const modal = document.getElementById('videoModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // 상세한 채널 정보 표시 기능 (로컬 코드와 동일)
+        async function showDetailedChannelInfo(channelId, channelName) {
+            if (!channelId) {
+                alert('채널 ID가 없습니다.');
+                return;
+            }
+            
+            if (apiKeys.length === 0) {
+                alert('먼저 YouTube API 키를 설정해주세요.');
+                openSettings();
+                return;
+            }
+            
+            try {
+                // 로딩 상태 표시
+                document.getElementById('statusBar').textContent = `채널 정보 가져오는 중... (${channelName})`;
+                
+                // 채널 상세 정보 가져오기
+                const channelData = await fetchDetailedChannelInfo(channelId);
+                
+                if (!channelData) {
+                    alert('채널 정보를 찾을 수 없습니다.');
+                    return;
+                }
+                
+                // 채널 정보 모달 표시
+                showDetailedChannelModal(channelData);
+                document.getElementById('statusBar').textContent = '채널 정보 로드 완료';
+                
+            } catch (error) {
+                console.error('채널 정보 가져오기 오류:', error);
+                alert('채널 정보를 가져오는 중 오류가 발생했습니다: ' + error.message);
+                document.getElementById('statusBar').textContent = '채널 정보 로드 실패';
+            }
         }
         
         // 엔터키 이벤트
