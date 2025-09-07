@@ -297,9 +297,12 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
     
     if (keyword) {
         searchUrl += `&q=${encodeURIComponent(keyword)}`;
+        console.log('🔍 키워드 추가:', keyword, '→ 인코딩:', encodeURIComponent(keyword));
     } else {
         searchUrl += `&q=*`;
     }
+    
+    console.log('🌐 최종 검색 URL:', searchUrl.replace(/key=[^&]+/, 'key=***'));
 
     if (publishedAfter) {
         searchUrl += `&publishedAfter=${publishedAfter}`;
@@ -312,6 +315,13 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
     }
 
     const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
+    
+    console.log('📊 검색 API 응답:', {
+        totalResults: searchData.pageInfo?.totalResults,
+        resultsPerPage: searchData.pageInfo?.resultsPerPage,
+        itemsCount: searchData.items?.length,
+        firstVideoTitle: searchData.items?.[0]?.snippet?.title
+    });
 
     if (!searchData.items || searchData.items.length === 0) {
         return [];
