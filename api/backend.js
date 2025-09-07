@@ -42,7 +42,9 @@ export default async function handler(req, res) {
 // 검색 처리 함수
 async function handleSearch(req, res) {
     const searchParams = req.method === 'GET' ? req.query : req.body;
-    const { keyword, maxResults, timeFrame, regionCode, apiKeys } = searchParams;
+    const { keyword, maxResults, timeFrame, regionCode, apiKeys, sortBy, videoLicense, startDate, endDate } = searchParams;
+    
+    console.log('🔍 검색 요청 받음:', { keyword, maxResults, timeFrame, regionCode, sortBy });
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -51,14 +53,23 @@ async function handleSearch(req, res) {
         });
     }
     
+    if (!keyword || keyword.trim() === '') {
+        return res.status(400).json({
+            success: false,
+            message: '검색 키워드가 필요합니다.'
+        });
+    }
+    
     try {
         const results = await searchYouTubeVideos({
-            keyword,
+            keyword: keyword.trim(),
             maxResults: parseInt(maxResults) || 50,
             timeFrame,
             regionCode: regionCode || 'KR',
-            sortBy: 'relevance',
-            videoLicense: 'any'
+            sortBy: sortBy || 'relevance',
+            videoLicense: videoLicense || 'any',
+            startDate,
+            endDate
         }, apiKeys);
         
         res.status(200).json({
@@ -254,13 +265,23 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         }
     }
 
+    console.log('🎯 실제 검색 시작:', { keyword, regionCode, maxResults, sortBy });
+    
+    // YouTube API에서 지원하는 order 매개변수로 변환
+    let apiSortBy = 'relevance'; // 기본값
+    if (sortBy === 'date') {
+        apiSortBy = 'date';
+    } else if (sortBy === 'viewCount') {
+        apiSortBy = 'relevance'; // viewCount는 검색 API에서 지원 안됨, 나중에 정렬
+    }
+    
     // YouTube Data API v3 검색
     let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet&` +
         `type=video&` +
         `maxResults=${maxResults}&` +
-        `order=${sortBy}&` +
+        `order=${apiSortBy}&` +
         `regionCode=${regionCode}`;
     
     // 국가별 언어 코드 매핑
@@ -371,8 +392,13 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         };
     });
 
-    // 정렬 처리 (조회수순 기본)
-    results = results.sort((a, b) => b.viewCount - a.viewCount);
+    // 정렬 처리 (sortBy 매개변수에 따라)
+    if (sortBy === 'viewCount') {
+        results = results.sort((a, b) => b.viewCount - a.viewCount);
+    } else if (sortBy === 'date') {
+        results = results.sort((a, b) => new Date(b.publishedAtRaw) - new Date(a.publishedAtRaw));
+    }
+    // 'relevance'의 경우는 API 결과 순서 유지
     
     // 인덱스 재조정
     results = results.map((item, index) => ({
