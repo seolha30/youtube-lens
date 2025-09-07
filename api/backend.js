@@ -249,16 +249,17 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         }
     }
 
-    // test.html과 동일한 sortBy 결정 로직
-    const isViewsSort = sortBy === 'viewCount';
+    // test.html과 동일한 검색 타입 결정 (기본값: 영상검색)
+    const isVideoSearch = true; // 서버에서는 항상 영상검색으로 고정
+    const isViewsSort = sortBy === 'viewCount'; // 클라이언트 정렬용
     
-    // YouTube Data API v3 검색
+    // YouTube Data API v3 검색 (test.html과 동일)
     let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet&` +
-        `type=video&` +
+        `type=${isVideoSearch ? 'video' : 'channel'}&` +
         `maxResults=${maxResults}&` +
-        `order=${isViewsSort ? 'relevance' : 'date'}&` +
+        `order=${sortBy}&` +
         `regionCode=${regionCode}`;
     
     // 국가별 언어 코드 매핑 (test.html과 동일)
