@@ -1397,9 +1397,24 @@
     </div>
 
     <script>
-        // 인증 관리 변수
+        // 전역 변수들
         let userAuthenticated = false;
         let authCache = null;
+        let apiKeys = [];
+        let currentResults = [];
+        let originalResults = [];
+        let currentFilters = {
+            shorts: false,
+            longform: false,
+            ciiGreat: false,
+            ciiGood: false,
+            ciiSoso: false,
+            viewCount: '',
+            subscriberCount: ''
+        };
+        let isViewsSort = true;
+        let isAllVideos = true;
+        let isVideoSearch = true;
 
         // DOM 요소들
         const authModal = document.getElementById('authModal');
@@ -1410,7 +1425,7 @@
         const logoutBtn = document.getElementById('logout-btn');
         const authMainContent = document.getElementById('auth-main-content');
 
-        // 라이센스 확인 함수 (틱톡렌즈와 동일한 로직)
+        // 라이센스 확인 함수
         async function checkLicense(licenseKey) {
             try {
                 console.log('🔍 라이센스 확인 시작:', licenseKey);
@@ -1649,30 +1664,111 @@
             return true;
         }
 
-        // UI 관련 기본 함수들만 포함
-        
-        // 토글 함수들 (인증 체크 추가)
+        // 백엔드 API 호출 함수
+        async function callBackendAPI(action, data = {}) {
+            try {
+                const response = await fetch('/api/backend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        ...data,
+                        apiKeys: apiKeys
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.message || 'API 요청 실패');
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('백엔드 API 호출 오류:', error);
+                throw error;
+            }
+        }
+
+        // 토글 함수들
         function toggleSort() {
             if (!requireAuth('정렬 변경')) return;
+            
             const sortBtn = document.getElementById('sortToggle');
-            // UI만 변경 - 실제 로직은 API 호출
+            isViewsSort = !isViewsSort;
+            
+            if (isViewsSort) {
+                sortBtn.textContent = '📊 조회수순';
+                sortBtn.className = 'toggle-btn views-sort';
+            } else {
+                sortBtn.textContent = '📅 최신순';
+                sortBtn.className = 'toggle-btn date-sort';
+            }
+            
+            // 현재 결과가 있으면 재정렬
+            if (currentResults.length > 0) {
+                sortCurrentResults();
+            }
         }
 
         function toggleLicense() {
             if (!requireAuth('라이센스 변경')) return;
+            
             const licenseBtn = document.getElementById('licenseToggle');
-            // UI만 변경 - 실제 로직은 API 호출
+            isAllVideos = !isAllVideos;
+            
+            if (isAllVideos) {
+                licenseBtn.textContent = '🎬 전체';
+                licenseBtn.className = 'toggle-btn all-videos';
+            } else {
+                licenseBtn.textContent = '🔄 재사용만';
+                licenseBtn.className = 'toggle-btn reuse-only';
+            }
         }
 
         function toggleSearchMode() {
             if (!requireAuth('검색 모드 변경')) return;
+            
             const searchModeBtn = document.getElementById('searchModeToggle');
-            // UI만 변경 - 실제 로직은 API 호출
+            isVideoSearch = !isVideoSearch;
+            
+            if (isVideoSearch) {
+                searchModeBtn.textContent = '🎬 영상 검색';
+                searchModeBtn.className = 'search-mode-btn video-search';
+            } else {
+                searchModeBtn.textContent = '📺 채널 검색';
+                searchModeBtn.className = 'search-mode-btn channel-search';
+            }
         }
 
         function toggleFilter(filterType) {
             if (!requireAuth('필터 변경')) return;
-            // UI만 변경 - 실제 로직은 API 호출
+            
+            const filterBtn = document.getElementById(filterType.replace('-', ''));
+            
+            switch(filterType) {
+                case 'shorts':
+                    currentFilters.shorts = !currentFilters.shorts;
+                    break;
+                case 'longform':
+                    currentFilters.longform = !currentFilters.longform;
+                    break;
+                case 'cii-great':
+                    currentFilters.ciiGreat = !currentFilters.ciiGreat;
+                    break;
+                case 'cii-good':
+                    currentFilters.ciiGood = !currentFilters.ciiGood;
+                    break;
+                case 'cii-soso':
+                    currentFilters.ciiSoso = !currentFilters.ciiSoso;
+                    break;
+            }
+            
+            if (filterBtn) {
+                filterBtn.classList.toggle('active');
+            }
         }
 
         // 날짜 필드 토글
@@ -1703,80 +1799,179 @@
             }
         }
 
-        // API 호출 함수들 (실제 로직은 백엔드에서 처리)
+        // 검색 함수
         async function startSearch() {
             if (!requireAuth('검색')) return;
             
-            showLoading(true);
+            if (apiKeys.length === 0) {
+                alert('먼저 API 키를 등록해주세요.');
+                openSettings();
+                return;
+            }
             
-            // 검색 조건 수집
-            const searchParams = {
-                keyword: document.getElementById('searchKeyword').value,
-                maxResults: document.getElementById('maxResults').value,
-                timeFrame: document.getElementById('timeFrame').value,
-                regionCode: document.getElementById('regionCode').value
-                // ... 기타 조건들
-            };
+            const keyword = document.getElementById('searchKeyword').value.trim();
+            if (!keyword) {
+                alert('검색할 키워드를 입력해주세요.');
+                return;
+            }
+            
+            showLoading(true);
+            updateStatus('검색 중...');
             
             try {
-                // 백엔드 API 호출 (실제 구현 시 추가)
-                const response = await fetch('/api/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(searchParams)
-                });
+                const searchParams = {
+                    keyword: keyword,
+                    maxResults: parseInt(document.getElementById('maxResults').value),
+                    timeFrame: document.getElementById('timeFrame').value,
+                    regionCode: document.getElementById('regionCode').value,
+                    startDate: document.getElementById('startDate').value,
+                    endDate: document.getElementById('endDate').value,
+                    sortBy: isViewsSort ? 'viewCount' : 'date',
+                    videoLicense: isAllVideos ? 'any' : 'creativeCommon'
+                };
                 
-                const results = await response.json();
-                displayResults(results);
+                const result = await callBackendAPI('search', searchParams);
+                
+                originalResults = result.data;
+                currentResults = [...originalResults];
+                
+                displayResults(currentResults);
+                updateStatus(`검색 완료 - ${currentResults.length}개 결과`);
                 
             } catch (error) {
                 console.error('검색 오류:', error);
+                alert('검색 중 오류가 발생했습니다: ' + error.message);
+                updateStatus('검색 실패');
                 showLoading(false);
             }
         }
 
+        // URL 분석 함수
         async function analyzeYouTubeUrl() {
             if (!requireAuth('URL 분석')) return;
             
-            const url = document.getElementById('youtubeUrl').value;
+            if (apiKeys.length === 0) {
+                alert('먼저 API 키를 등록해주세요.');
+                openSettings();
+                return;
+            }
+            
+            const url = document.getElementById('youtubeUrl').value.trim();
             if (!url) {
                 alert('YouTube URL을 입력해주세요.');
                 return;
             }
             
             showLoading(true);
+            updateStatus('URL 분석 중...');
             
             try {
-                // 백엔드 API 호출 (실제 구현 시 추가)
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url })
-                });
+                const result = await callBackendAPI('analyze', { url: url });
                 
-                const result = await response.json();
-                displayResults([result]);
+                originalResults = result.data;
+                currentResults = [...originalResults];
+                
+                displayResults(currentResults);
+                updateStatus('URL 분석 완료');
                 
             } catch (error) {
                 console.error('URL 분석 오류:', error);
+                alert('URL 분석 중 오류가 발생했습니다: ' + error.message);
+                updateStatus('URL 분석 실패');
                 showLoading(false);
             }
         }
 
-        function applyFilters() {
+        // 필터 적용 함수
+        async function applyFilters() {
             if (!requireAuth('필터 적용')) return;
-            // 필터 조건 수집 후 백엔드 API 호출
+            
+            if (originalResults.length === 0) {
+                alert('먼저 검색을 실행해주세요.');
+                return;
+            }
+            
+            // 필터 조건 수집
+            const filters = {
+                ...currentFilters,
+                viewCount: document.getElementById('viewCountFilter').value,
+                subscriberCount: document.getElementById('subscriberCountFilter').value
+            };
+            
+            try {
+                const result = await callBackendAPI('filter', { 
+                    results: originalResults, 
+                    filters: filters 
+                });
+                
+                currentResults = result.data;
+                displayResults(currentResults);
+                updateStatus(result.message);
+                
+            } catch (error) {
+                console.error('필터 적용 오류:', error);
+                alert('필터 적용 중 오류가 발생했습니다: ' + error.message);
+            }
         }
 
+        // 필터 해제 함수
         function clearFilters() {
             if (!requireAuth('필터 해제')) return;
-            // 필터 UI 초기화
+            
+            // 필터 상태 초기화
+            currentFilters = {
+                shorts: false,
+                longform: false,
+                ciiGreat: false,
+                ciiGood: false,
+                ciiSoso: false,
+                viewCount: '',
+                subscriberCount: ''
+            };
+            
+            // UI 초기화
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById('viewCountFilter').value = '';
+            document.getElementById('subscriberCountFilter').value = '';
+            
+            // 원본 결과로 복원
+            if (originalResults.length > 0) {
+                currentResults = [...originalResults];
+                displayResults(currentResults);
+                updateStatus('필터 해제됨');
+            }
         }
 
+        // 결과 삭제 함수
         function clearResults() {
             if (!requireAuth('결과 삭제')) return;
+            
+            originalResults = [];
+            currentResults = [];
             document.getElementById('resultsBody').innerHTML = '';
             showLoading(false);
+            updateStatus('결과가 삭제되었습니다');
+        }
+
+        // 현재 결과 정렬
+        function sortCurrentResults() {
+            if (currentResults.length === 0) return;
+            
+            if (isViewsSort) {
+                currentResults.sort((a, b) => b.viewCount - a.viewCount);
+            } else {
+                currentResults.sort((a, b) => new Date(b.publishedAtRaw) - new Date(a.publishedAtRaw));
+            }
+            
+            // 인덱스 재조정
+            currentResults = currentResults.map((item, index) => ({
+                ...item,
+                index: index + 1
+            }));
+            
+            displayResults(currentResults);
         }
 
         // UI 표시 함수들
@@ -1786,27 +1981,134 @@
             document.getElementById('noResults').style.display = 'none';
         }
 
+        function updateStatus(message) {
+            document.getElementById('statusBar').textContent = message;
+        }
+
+        // 결과 표시 함수
         function displayResults(results) {
-            // 결과 테이블에 데이터 표시 (UI만)
             const tbody = document.getElementById('resultsBody');
             tbody.innerHTML = '';
             
-            if (results.length === 0) {
+            if (!results || results.length === 0) {
                 document.getElementById('noResults').style.display = 'block';
                 document.getElementById('resultsTable').style.display = 'none';
+                showLoading(false);
                 return;
             }
             
-            // 결과 행 생성 로직 (실제 구현 시 추가)
+            results.forEach((item, index) => {
+                const row = createResultRow(item, index + 1);
+                tbody.appendChild(row);
+            });
+            
             document.getElementById('resultsTable').style.display = 'table';
             document.getElementById('noResults').style.display = 'none';
             showLoading(false);
         }
 
-        // API 키 관리 (기존 로직 유지)
+        // 결과 행 생성 함수
+        function createResultRow(item, index) {
+            const row = document.createElement('tr');
+            
+            // CII 뱃지 클래스 결정
+            let ciiClass = 'cii-bad';
+            if (item.cii === 'Great!!') ciiClass = 'cii-great';
+            else if (item.cii === 'Good') ciiClass = 'cii-good';
+            else if (item.cii === 'Soso') ciiClass = 'cii-soso';
+            else if (item.cii === 'Not bad') ciiClass = 'cii-notbad';
+            
+            // 게이지 바 생성
+            const contributionGauge = createGaugeBar(item.contributionValue);
+            const performanceGauge = createGaugeBar(item.performanceValue);
+            const ciiGauge = createGaugeBar(item.ciiScore);
+            const engagementGauge = createGaugeBar(item.engagementRate);
+            
+            row.innerHTML = `
+                <td>${index}</td>
+                <td>
+                    <img src="${item.thumbnail}" alt="썸네일" class="thumbnail" 
+                         onclick="window.open('https://www.youtube.com/watch?v=${item.videoId}', '_blank')">
+                </td>
+                <td class="channel-name">
+                    <a href="https://www.youtube.com/channel/${item.channelId}" target="_blank" 
+                       style="color: #1976D2; text-decoration: none;">
+                        ${item.channelTitle}
+                    </a>
+                </td>
+                <td class="video-title">
+                    <a href="https://www.youtube.com/watch?v=${item.videoId}" target="_blank" 
+                       style="color: #333; text-decoration: none;">
+                        ${item.title}
+                    </a>
+                </td>
+                <td>${item.publishedAt}</td>
+                <td>${formatNumber(item.subscriberCount)}명</td>
+                <td>${formatNumber(item.viewCount)}회</td>
+                <td>${contributionGauge}</td>
+                <td>${performanceGauge}</td>
+                <td>
+                    <div class="cii-badge ${ciiClass}">${item.cii}</div>
+                    ${ciiGauge}
+                </td>
+                <td>${item.duration}</td>
+                <td>${formatNumber(item.likeCount)}개</td>
+                <td>${formatNumber(item.commentCount)}개</td>
+                <td>${engagementGauge}</td>
+                <td>${formatNumber(item.totalVideos)}개</td>
+                <td>-</td>
+                <td class="description-cell" title="${item.description}">
+                    ${item.description.substring(0, 50)}${item.description.length > 50 ? '...' : ''}
+                </td>
+            `;
+            
+            return row;
+        }
+
+        // 게이지 바 생성 함수
+        function createGaugeBar(value) {
+            if (!value || value <= 0) {
+                return `
+                    <div class="gauge-container">
+                        <div class="gauge-bar gauge-red" style="width: 1%;"></div>
+                        <div class="gauge-text">0%</div>
+                    </div>
+                `;
+            }
+            
+            let colorClass = 'gauge-red';
+            if (value >= 91) {
+                colorClass = 'gauge-green';
+            } else if (value >= 61) {
+                colorClass = 'gauge-blue';
+            } else if (value >= 31) {
+                colorClass = 'gauge-yellow';
+            }
+            
+            const barWidth = Math.max(5, Math.min(100, value));
+            const displayText = value < 0.1 ? '0%' : 
+                               value < 1 ? value.toFixed(1) + '%' : 
+                               Math.round(value) + '%';
+            
+            return `
+                <div class="gauge-container">
+                    <div class="gauge-bar ${colorClass}" style="width: ${barWidth}%;"></div>
+                    <div class="gauge-text">${displayText}</div>
+                </div>
+            `;
+        }
+
+        // 숫자 포맷팅 함수
+        function formatNumber(num) {
+            if (!num) return '0';
+            return num.toLocaleString();
+        }
+
+        // API 키 관리 함수들
         function openSettings() {
             if (!requireAuth('API 키 설정')) return;
             document.getElementById('settingsModal').style.display = 'block';
+            loadApiKeysList();
         }
 
         function closeSettings() {
@@ -1814,7 +2116,56 @@
         }
 
         function addApiKey() {
-            // API 키 추가 로직
+            const newApiKey = document.getElementById('newApiKeyInput').value.trim();
+            if (!newApiKey) {
+                alert('API 키를 입력해주세요.');
+                return;
+            }
+            
+            if (apiKeys.includes(newApiKey)) {
+                alert('이미 등록된 API 키입니다.');
+                return;
+            }
+            
+            apiKeys.push(newApiKey);
+            localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
+            
+            document.getElementById('newApiKeyInput').value = '';
+            loadApiKeysList();
+            
+            updateStatus(`API 키 추가됨 - 총 ${apiKeys.length}개`);
+        }
+
+        function removeApiKey(index) {
+            if (confirm('이 API 키를 삭제하시겠습니까?')) {
+                apiKeys.splice(index, 1);
+                localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
+                loadApiKeysList();
+                updateStatus(`API 키 삭제됨 - 총 ${apiKeys.length}개`);
+            }
+        }
+
+        function loadApiKeysList() {
+            const container = document.getElementById('apiKeysList');
+            container.innerHTML = '';
+            
+            if (apiKeys.length === 0) {
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">등록된 API 키가 없습니다</div>';
+                return;
+            }
+            
+            apiKeys.forEach((key, index) => {
+                const keyElement = document.createElement('div');
+                keyElement.className = 'api-key-item';
+                keyElement.innerHTML = `
+                    <div class="api-key-text">${key.substring(0, 8)}...${key.substring(key.length - 4)}</div>
+                    <div>
+                        <span class="api-key-status status-standby">대기</span>
+                        <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
+                    </div>
+                `;
+                container.appendChild(keyElement);
+            });
         }
 
         function openApiGuide() {
@@ -1825,6 +2176,12 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // 인증 시스템 초기화
             await initializeAuth();
+            
+            // 저장된 API 키 로드
+            const savedApiKeys = localStorage.getItem('youtubeApiKeys');
+            if (savedApiKeys) {
+                apiKeys = JSON.parse(savedApiKeys);
+            }
             
             // 오늘 날짜 설정
             const today = new Date().toLocaleDateString('sv-SE', {timeZone: 'Asia/Seoul'});
@@ -1854,6 +2211,12 @@
         document.getElementById('youtubeUrl').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 analyzeYouTubeUrl();
+            }
+        });
+
+        document.getElementById('newApiKeyInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addApiKey();
             }
         });
 
