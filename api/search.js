@@ -1,4 +1,5 @@
-export default async function handler(req, res) {
+// 기존 export default 대신 이렇게 변경
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -9,4 +10,4 @@ export default async function handler(req, res) {
     message: 'Search API 준비 중',
     data: [] 
   });
-}
+};
