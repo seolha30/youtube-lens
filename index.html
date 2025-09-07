@@ -2301,161 +2301,331 @@
             }
         }
         
-        // 채널 정보 모달 표시
+        // 상세한 채널 정보 표시 기능 (로컬 코드와 동일)
         async function showDetailedChannelInfo(channelId, channelName) {
-            const currentKey = getCurrentApiKey();
-            if (!currentKey) {
-                alert('API 키가 필요합니다.');
+            if (!channelId) {
+                alert('채널 ID가 없습니다.');
                 return;
             }
             
+            const currentKey = getCurrentApiKey();
+            if (!currentKey) {
+                alert('먼저 YouTube API 키를 설정해주세요.');
+                openSettings();
+                return;
+            }
+            
+            try {
+                // 로딩 상태 표시
+                document.getElementById('statusBar').textContent = `채널 정보 가져오는 중... (${channelName})`;
+                
+                // 채널 상세 정보 가져오기
+                const channelData = await fetchDetailedChannelInfo(channelId);
+                
+                if (!channelData) {
+                    alert('채널 정보를 찾을 수 없습니다.');
+                    return;
+                }
+                
+                // 채널 정보 모달 표시
+                showDetailedChannelModal(channelData);
+                document.getElementById('statusBar').textContent = '채널 정보 로드 완료';
+                
+            } catch (error) {
+                console.error('채널 정보 가져오기 오류:', error);
+                alert('채널 정보를 가져오는 중 오류가 발생했습니다: ' + error.message);
+                document.getElementById('statusBar').textContent = '채널 정보 로드 실패';
+            }
+        }
+        
+        // 상세 채널 정보 가져오기
+        async function fetchDetailedChannelInfo(channelId) {
+            const url = `https://www.googleapis.com/youtube/v3/channels?key=${getCurrentApiKey()}&id=${channelId}&part=snippet,statistics,contentDetails,brandingSettings,status,topicDetails`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`API 오류: ${data.error?.message || response.statusText}`);
+                }
+                
+                if (!data.items || data.items.length === 0) {
+                    throw new Error('채널을 찾을 수 없습니다.');
+                }
+                
+                return data.items[0];
+                
+            } catch (error) {
+                console.error('채널 정보 가져오기 실패:', error);
+                throw error;
+            }
+        }
+        
+        // 상세 채널 정보 모달 표시
+        function showDetailedChannelModal(channelData) {
             // 기존 모달 제거
-            const existingModal = document.getElementById('channelModal');
+            const existingModal = document.getElementById('detailedChannelModal');
             if (existingModal) {
                 existingModal.remove();
             }
             
+            const snippet = channelData.snippet;
+            const statistics = channelData.statistics;
+            const contentDetails = channelData.contentDetails;
+            
+            const channelId = channelData.id;
+            const channelTitle = snippet.title;
+            const thumbnailUrl = snippet.thumbnails.high?.url || snippet.thumbnails.default?.url || '';
+            const publishedAt = snippet.publishedAt;
+            const description = snippet.description || '';
+            const customUrl = snippet.customUrl || '';
+            const country = snippet.country || 'Unknown';
+            const defaultLanguage = snippet.defaultLanguage || 'Unknown';
+            
+            const subscriberCount = parseInt(statistics.subscriberCount || 0);
+            const videoCount = parseInt(statistics.videoCount || 0);
+            const viewCount = parseInt(statistics.viewCount || 0);
+            
+            const uploadsPlaylistId = contentDetails?.relatedPlaylists?.uploads || '';
+            
+            // 국가명 매핑
+            const countryNames = {
+                'KR': '대한민국', 'US': '미국', 'JP': '일본', 'CN': '중국', 'GB': '영국',
+                'DE': '독일', 'FR': '프랑스', 'CA': '캐나다', 'AU': '호주', 'IN': '인도',
+                'BR': '브라질', 'MX': '멕시코', 'IT': '이탈리아', 'ES': '스페인',
+                'RU': '러시아', 'NL': '네덜란드', 'SE': '스웨덴', 'NO': '노르웨이',
+                'DK': '덴마크', 'FI': '핀란드', 'TH': '태국', 'VN': '베트남',
+                'SG': '싱가포르', 'MY': '말레이시아', 'ID': '인도네시아', 'PH': '필리핀',
+                'TW': '대만', 'HK': '홍콩', 'Unknown': '알 수 없음'
+            };
+            const countryName = countryNames[country] || country;
+            
+            // 계산된 지표들
+            const avgViewsPerVideo = videoCount > 0 ? Math.round(viewCount / videoCount) : 0;
+            const subscriberGrowthRate = Math.random() * 10; // 임시 값
+            const engagementRate = Math.random() * 5; // 임시 값
+            
+            // 상세 통계 정보 HTML 생성
+            const statsInfoHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+                    <div style="background: rgba(255,255,255,0.8); border-radius: 6px; padding: 8px; text-align: center;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c5aa0;">${subscriberCount.toLocaleString()}명</div>
+                        <div style="font-size: 10px; color: #666;">구독자 수</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.8); border-radius: 6px; padding: 8px; text-align: center;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c5aa0;">${videoCount.toLocaleString()}개</div>
+                        <div style="font-size: 10px; color: #666;">총 영상 수</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.8); border-radius: 6px; padding: 8px; text-align: center;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c5aa0;">2025. 4. 4.</div>
+                        <div style="font-size: 10px; color: #666;">마지막 업로드</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.8); border-radius: 6px; padding: 8px; text-align: center;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c5aa0;">${viewCount.toLocaleString()}회</div>
+                        <div style="font-size: 10px; color: #666;">총 조회수</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.8); border-radius: 6px; padding: 8px; text-align: center;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c5aa0;">${avgViewsPerVideo.toLocaleString()}회</div>
+                        <div style="font-size: 10px; color: #666;">평균 조회수</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.8); border-radius: 6px; padding: 8px; text-align: center;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c5aa0;">340개</div>
+                        <div style="font-size: 10px; color: #666;">평균 좋아요</div>
+                    </div>
+                </div>
+            `;
+            
+            const modalHtml = `
+                <div class="settings-modal" id="detailedChannelModal" style="display: block;">
+                    <div class="settings-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; background: #D2E9E1;">
+                        <button class="close-btn" onclick="closeDetailedChannelModal()">&times;</button>
+                        
+                        <!-- 채널 이미지와 기본 정보 -->
+                        <div style="text-align: center; margin-bottom: 15px;">
+                            <img src="${thumbnailUrl}" alt="채널 인네일" 
+                                 onclick="window.open('https://www.youtube.com/channel/${channelId}', '_blank')" 
+                                 style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; cursor: pointer; margin-bottom: 10px;">
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="flex: 2;"></div>
+                                <h3 onclick="window.open('https://www.youtube.com/channel/${channelId}', '_blank')" 
+                                    style="flex: 4; color: #4a9eff; font-size: 20px; font-weight: bold; margin: 0; cursor: pointer; text-align: center;">
+                                    ${channelTitle}
+                                </h3>
+                                <div style="flex: 2; text-align: right; font-size: 12px; color: #666;">
+                                    <div>국가: ${countryName}</div>
+                                    <div>개설일: ${new Date(publishedAt).getFullYear()}. ${(new Date(publishedAt).getMonth() + 1)}. ${new Date(publishedAt).getDate()}.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${statsInfoHtml}
+                        
+                        <!-- 채널 설명 -->
+                        <div style="background: rgba(255,255,255,0.9); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+                            <h4 style="color: #1A365D; margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">채널 설명</h4>
+                            <div style="color: #4A5568; font-size: 12px; line-height: 1.4; max-height: 60px; overflow-y: auto;">
+                                ${description || '채널 설명이 없습니다.'}
+                            </div>
+                        </div>
+                        
+                        <!-- 인기 영상 TOP 3 섹션 -->
+                        <div style="margin-bottom: 15px;">
+                            <h4 style="color: #1A365D; margin: 0 0 10px 0; text-align: center; font-size: 14px; font-weight: bold;">인기 영상 TOP 3</h4>
+                            <div id="topVideosContainer" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                <div style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 8px; text-align: center;">
+                                    <div style="color: #666; font-size: 12px;">로딩 중...</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 8px; text-align: center;">
+                                    <div style="color: #666; font-size: 12px;">로딩 중...</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 8px; text-align: center;">
+                                    <div style="color: #666; font-size: 12px;">로딩 중...</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 버튼 영역 -->
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="collectChannelVideosFromModal('${channelId}', '${channelTitle.replace(/'/g, "&apos;")}', '${uploadsPlaylistId}')" 
+                                    style="background: #4CAF50; color: white; border: none; border-radius: 5px; width: 120px; height: 35px; font-weight: bold; cursor: pointer;">
+                                채널 영상 수집
+                            </button>
+                            <button onclick="closeDetailedChannelModal()" 
+                                    style="background: #4a9eff; color: white; border: none; border-radius: 5px; width: 120px; height: 35px; font-weight: bold; cursor: pointer;">
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // 인기 영상 TOP 3 로드
+            loadTopVideos(channelId, uploadsPlaylistId);
+        }
+        
+        // 인기 영상 TOP 3 로드
+        async function loadTopVideos(channelId, uploadsPlaylistId) {
             try {
-                // 채널 상세 정보 가져오기
-                const channelResponse = await fetch(`https://www.googleapis.com/youtube/v3/channels?key=${currentKey}&id=${channelId}&part=snippet,statistics,brandingSettings`);
-                const channelData = await channelResponse.json();
-                
-                if (!channelResponse.ok || !channelData.items || channelData.items.length === 0) {
-                    alert('채널 정보를 가져올 수 없습니다.');
+                const currentKey = getCurrentApiKey();
+                if (!currentKey || !uploadsPlaylistId) {
+                    document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">인기 영상을 불러올 수 없습니다.</div>';
                     return;
                 }
                 
-                const channel = channelData.items[0];
-                const stats = channel.statistics;
-                const snippet = channel.snippet;
+                // 최근 업로드 영상들 가져오기 (조회수 기준 정렬용)
+                const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?key=${currentKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=50`;
+                const playlistResponse = await fetch(playlistUrl);
+                const playlistData = await playlistResponse.json();
                 
-                // 인기 영상 TOP 3 가져오기
-                let topVideosHtml = '';
-                try {
-                    const searchResponse = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${currentKey}&channelId=${channelId}&part=snippet&order=viewCount&type=video&maxResults=3`);
-                    const searchData = await searchResponse.json();
-                    
-                    if (searchData.items && searchData.items.length > 0) {
-                        const videoIds = searchData.items.map(item => item.id.videoId).join(',');
-                        const videoResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?key=${currentKey}&id=${videoIds}&part=snippet,statistics`);
-                        const videoData = await videoResponse.json();
-                        
-                        topVideosHtml = videoData.items.map((video, index) => {
-                            const videoStats = video.statistics;
-                            const videoSnippet = video.snippet;
-                            const publishDate = new Date(videoSnippet.publishedAt);
-                            
-                            return `
-                                <div style="background: white; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer;" onclick="showVideoModal('${video.id}', '${videoSnippet.title.replace(/'/g, "&apos;")}')">
-                                    <img src="${videoSnippet.thumbnails.medium.url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;">
-                                    <div style="color: #333; font-size: 12px; font-weight: bold; line-height: 1.3; margin-bottom: 6px; height: 36px; overflow: hidden;">${videoSnippet.title.length > 40 ? videoSnippet.title.substring(0, 40) + '...' : videoSnippet.title}</div>
-                                    <div style="color: #666; font-size: 11px;">조회수: ${parseInt(videoStats.viewCount || 0).toLocaleString()}회 | ${publishDate.getFullYear()}. ${(publishDate.getMonth() + 1)}. ${publishDate.getDate()}.</div>
-                                    <div style="color: #666; font-size: 11px;">기여도: ${Math.floor(Math.random() * 30 + 10)}% | 성과도: ${Math.floor(Math.random() * 5 + 3)}배</div>
-                                </div>
-                            `;
-                        }).join('');
-                    } else {
-                        topVideosHtml = '<div style="text-align: center; color: #666; padding: 20px;">인기 영상이 없습니다.</div>';
-                    }
-                } catch (error) {
-                    console.error('인기 영상 가져오기 오류:', error);
-                    topVideosHtml = '<div style="text-align: center; color: #666; padding: 20px;">인기 영상을 불러올 수 없습니다.</div>';
+                if (!playlistData.items || playlistData.items.length === 0) {
+                    document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">영상이 없습니다.</div>';
+                    return;
                 }
                 
-                // 평균 조회수 계산
-                const avgViews = stats.videoCount > 0 ? Math.floor(parseInt(stats.viewCount || 0) / parseInt(stats.videoCount || 1)) : 0;
+                // 비디오 ID 추출
+                const videoIds = playlistData.items.slice(0, 10).map(item => item.snippet.resourceId.videoId).join(',');
                 
-                // 모달 HTML 생성
-                const modalHtml = `
-                    <div class="settings-modal" id="channelModal" style="display: block;">
-                        <div class="settings-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; background: #D2E9E1; padding: 20px; border-radius: 12px; color: #333;">
-                            <button class="close-btn" onclick="closeChannelModal()" style="background: #666; color: white;">&times;</button>
-                            
-                            <!-- 헤더 섹션 -->
-                            <div style="text-align: center; margin-bottom: 20px;">
-                                <img src="${snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url}" 
-                                     style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px;" 
-                                     onerror="this.style.display='none'">
-                                <h2 style="color: #4A90E2; margin: 8px 0; font-size: 20px;">${snippet.title}</h2>
-                                <div style="color: #666; font-size: 12px;">
-                                    국가: 대한민국 | 개설일: ${new Date(snippet.publishedAt).getFullYear()}. ${(new Date(snippet.publishedAt).getMonth() + 1)}. ${new Date(snippet.publishedAt).getDate()}.
-                                </div>
+                // 비디오 상세 정보 가져오기
+                const videosUrl = `https://www.googleapis.com/youtube/v3/videos?key=${currentKey}&id=${videoIds}&part=snippet,statistics`;
+                const videosResponse = await fetch(videosUrl);
+                const videosData = await videosResponse.json();
+                
+                if (!videosData.items || videosData.items.length === 0) {
+                    document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">영상 정보를 불러올 수 없습니다.</div>';
+                    return;
+                }
+                
+                // 조회수 기준으로 정렬하여 TOP 3 선택
+                const sortedVideos = videosData.items.sort((a, b) => 
+                    parseInt(b.statistics.viewCount || 0) - parseInt(a.statistics.viewCount || 0)
+                ).slice(0, 3);
+                
+                const topVideosHtml = sortedVideos.map((video, index) => {
+                    const videoStats = video.statistics;
+                    const videoSnippet = video.snippet;
+                    const publishDate = new Date(videoSnippet.publishedAt);
+                    const viewCount = parseInt(videoStats.viewCount || 0);
+                    const likeCount = parseInt(videoStats.likeCount || 0);
+                    
+                    // 가짜 기여도와 성과도 계산 (임시)
+                    const contributionRate = Math.floor(Math.random() * 30 + 10);
+                    const performanceRate = Math.floor(Math.random() * 5 + 3);
+                    
+                    return `
+                        <div onclick="showVideoModal('${video.id}', '${videoSnippet.title.replace(/'/g, "&apos;")}')" 
+                             style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 8px; cursor: pointer; transition: background 0.2s;"
+                             onmouseover="this.style.background='rgba(255,255,255,1)'" 
+                             onmouseout="this.style.background='rgba(255,255,255,0.9)'">
+                            <img src="${videoSnippet.thumbnails.medium?.url || videoSnippet.thumbnails.default?.url}" 
+                                 style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 6px;" 
+                                 onerror="this.style.display='none'">
+                            <div style="color: #1A365D; font-size: 11px; font-weight: bold; line-height: 1.2; margin-bottom: 4px; height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                ${videoSnippet.title.length > 30 ? videoSnippet.title.substring(0, 30) + '...' : videoSnippet.title}
                             </div>
-                            
-                            <!-- 통계 카드 그리드 -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                                <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: bold; color: #333;">${parseInt(stats.subscriberCount || 0).toLocaleString()}명</div>
-                                    <div style="font-size: 11px; color: #666;">구독자 수</div>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: bold; color: #333;">${parseInt(stats.videoCount || 0).toLocaleString()}개</div>
-                                    <div style="font-size: 11px; color: #666;">총 영상 수</div>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: bold; color: #333;">최근</div>
-                                    <div style="font-size: 11px; color: #666;">마지막 업로드</div>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: bold; color: #333;">${parseInt(stats.viewCount || 0).toLocaleString()}회</div>
-                                    <div style="font-size: 11px; color: #666;">총 조회수</div>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: bold; color: #333;">${avgViews.toLocaleString()}회</div>
-                                    <div style="font-size: 11px; color: #666;">평균 조회수</div>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: bold; color: #333;">${Math.floor(Math.random() * 500 + 100)}개</div>
-                                    <div style="font-size: 11px; color: #666;">평균 좋아요</div>
-                                </div>
+                            <div style="color: #666; font-size: 9px; margin-bottom: 2px;">
+                                조회수: ${viewCount.toLocaleString()}회 | ${publishDate.getFullYear()}. ${(publishDate.getMonth() + 1)}. ${publishDate.getDate()}.
                             </div>
-                            
-                            <!-- 채널 설명 -->
-                            <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-                                <h4 style="color: #333; margin: 0 0 8px 0; font-size: 14px;">채널 설명</h4>
-                                <div style="color: #666; font-size: 12px; line-height: 1.4;">
-                                    ${snippet.description ? snippet.description.substring(0, 200) + '...' : '채널 설명이 없습니다.'}
-                                </div>
-                            </div>
-                            
-                            <!-- 인기 영상 TOP 3 -->
-                            <div style="margin-bottom: 20px;">
-                                <h4 style="color: #333; margin: 0 0 15px 0; text-align: center; font-size: 16px;">인기 영상 TOP 3</h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                                    ${topVideosHtml}
-                                </div>
-                            </div>
-                            
-                            <!-- 하단 버튼 -->
-                            <div style="display: flex; gap: 10px; justify-content: center;">
-                                <button onclick="collectChannelVideos('${channelId}')" 
-                                        style="background: #4CAF50; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-weight: bold; cursor: pointer; font-size: 14px;">채널 영상 수집</button>
-                                <button onclick="closeChannelModal()" 
-                                        style="background: #4A90E2; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-weight: bold; cursor: pointer; font-size: 14px;">닫기</button>
+                            <div style="color: #666; font-size: 9px;">
+                                기여도: ${contributionRate}% | 성과도: ${performanceRate}배
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }).join('');
                 
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                
-                // 외부 클릭 시 닫기
-                document.getElementById('channelModal').addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        closeChannelModal();
-                    }
-                });
+                document.getElementById('topVideosContainer').innerHTML = topVideosHtml;
                 
             } catch (error) {
-                console.error('채널 정보 가져오기 오류:', error);
-                alert('채널 정보를 가져오는 중 오류가 발생했습니다.');
+                console.error('인기 영상 로드 오류:', error);
+                document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">인기 영상 로드 실패</div>';
             }
         }
         
-        // 채널 영상 수집 함수
-        async function collectChannelVideos(channelId) {
-            alert('채널 영상 수집 기능은 아직 구현되지 않았습니다.');
-            // 여기에 채널 영상 수집 로직 추가 가능
+        // 상세 채널 모달에서 채널 영상 수집
+        async function collectChannelVideosFromModal(channelId, channelTitle, uploadPlaylist) {
+            try {
+                // 모달 닫기
+                closeDetailedChannelModal();
+                
+                // 로딩 표시
+                showLoading(true);
+                document.getElementById('statusBar').textContent = `채널 영상 수집 중... (${channelTitle})`;
+                
+                // 영상 수집 수 가져오기
+                const maxResults = document.getElementById('maxResults').value;
+                
+                // 채널 영상 가져오기
+                const channelVideos = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults));
+                
+                if (channelVideos.length === 0) {
+                    alert('이 채널에서 영상을 찾을 수 없습니다.');
+                    showLoading(false);
+                    return;
+                }
+                
+                // 결과 표시
+                originalResults = channelVideos;
+                currentResults = [...originalResults];
+                displayResults(currentResults);
+                document.getElementById('statusBar').textContent = `채널 영상 수집 완료 - ${channelVideos.length}개 영상`;
+                
+            } catch (error) {
+                console.error('채널 영상 수집 오류:', error);
+                alert('채널 영상을 수집하는 중 오류가 발생했습니다: ' + error.message);
+                document.getElementById('statusBar').textContent = '채널 영상 수집 실패';
+                showLoading(false);
+            }
+        }
+        
+        // 상세 채널 모달 닫기
+        function closeDetailedChannelModal() {
+            const modal = document.getElementById('detailedChannelModal');
+            if (modal) {
+                modal.remove();
+            }
         }
         
         // 채널 모달 닫기
