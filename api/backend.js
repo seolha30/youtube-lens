@@ -1,85 +1,178 @@
-// backend.js - YouTube Lens 백엔드 로직
+// backend.js - YouTube Lens Vercel 서버리스 함수
 
-// API 키 관리 시스템
-let apiKeys = [];
-let currentApiIndex = 0;
-let searchResults = [];
-let originalResults = [];
-let videoDescriptions = {};
-
-// 원본 검색어 저장 및 번역 관리
-let originalSearchTerm = '';
-let translationCache = {};
-let deeplQuotaExceeded = false;
-
-// 토글 상태 관리
-let isViewsSort = true;
-let isAllVideos = true;
-let isVideoSearch = true;
-
-// 필터 상태 관리
-let filterState = {
-    shorts: false,
-    longform: false,
-    ciiGreat: false,
-    ciiGood: false,
-    ciiSoso: false,
-    viewCount: '',
-    subscriberCount: ''
-};
-
-// 현재 사용 중인 API 키 반환
-function getCurrentApiKey() {
-    if (apiKeys.length === 0) return null;
-    if (currentApiIndex >= apiKeys.length) currentApiIndex = 0;
-    return apiKeys[currentApiIndex];
-}
-
-// 다음 API 키로 로테이션
-function rotateToNextApiKey() {
-    if (apiKeys.length <= 1) return false;
+// 기본 export 함수 (Vercel 서버리스 함수 진입점)
+export default async function handler(req, res) {
+    // CORS 설정
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    currentApiIndex = (currentApiIndex + 1) % apiKeys.length;
-    console.log(`API 키 로테이션: 인덱스 ${currentApiIndex}로 전환`);
-    return true;
-}
-
-// 게이지 바 생성 함수
-function createGaugeBar(value) {
-    if (!value || value <= 0) {
-        return `
-            <div class="gauge-container">
-                <div class="gauge-bar gauge-red" style="width: 1%;"></div>
-                <div class="gauge-text">0%</div>
-            </div>
-        `;
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
     }
     
-    let colorClass = 'gauge-red';
-    if (value >= 91) {
-        colorClass = 'gauge-green';
-    } else if (value >= 61) {
-        colorClass = 'gauge-blue';
-    } else if (value >= 31) {
-        colorClass = 'gauge-yellow';
+    try {
+        const { action } = req.method === 'GET' ? req.query : req.body;
+        
+        switch (action) {
+            case 'search':
+                return await handleSearch(req, res);
+            case 'analyze':
+                return await handleAnalyze(req, res);
+            case 'filter':
+                return await handleFilter(req, res);
+            case 'sort':
+                return await handleSort(req, res);
+            default:
+                res.status(400).json({ 
+                    success: false, 
+                    message: '잘못된 action 파라미터입니다.' 
+                });
+        }
+    } catch (error) {
+        console.error('API 오류:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message || '서버 오류가 발생했습니다.' 
+        });
+    }
+}
+
+// 검색 처리 함수
+async function handleSearch(req, res) {
+    const searchParams = req.method === 'GET' ? req.query : req.body;
+    const { keyword, maxResults, timeFrame, regionCode, apiKeys } = searchParams;
+    
+    if (!apiKeys || apiKeys.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'API 키가 필요합니다.'
+        });
     }
     
-    const barWidth = Math.max(5, Math.min(100, value));
-    const displayText = value < 0.1 ? '0%' : 
-                       value < 1 ? value.toFixed(1) + '%' : 
-                       Math.round(value) + '%';
+    try {
+        const results = await searchYouTubeVideos({
+            keyword,
+            maxResults: parseInt(maxResults) || 50,
+            timeFrame,
+            regionCode: regionCode || 'KR',
+            sortBy: 'relevance',
+            videoLicense: 'any'
+        }, apiKeys);
+        
+        res.status(200).json({
+            success: true,
+            data: results,
+            message: `검색 완료 - ${results.length}개 결과`
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+            data: []
+        });
+    }
+}
+
+// URL 분석 처리 함수
+async function handleAnalyze(req, res) {
+    const { url, apiKeys } = req.method === 'GET' ? req.query : req.body;
     
-    return `
-        <div class="gauge-container">
-            <div class="gauge-bar ${colorClass}" style="width: ${barWidth}%;"></div>
-            <div class="gauge-text">${displayText}</div>
-        </div>
-    `;
+    if (!apiKeys || apiKeys.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'API 키가 필요합니다.'
+        });
+    }
+    
+    try {
+        const videoId = extractVideoId(url);
+        if (!videoId) {
+            throw new Error('올바른 YouTube URL을 입력해주세요.');
+        }
+        
+        const result = await fetchSingleVideoData(videoId, apiKeys);
+        if (!result) {
+            throw new Error('비디오 정보를 찾을 수 없습니다.');
+        }
+        
+        res.status(200).json({
+            success: true,
+            data: [result],
+            message: 'URL 분석 완료'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+            data: []
+        });
+    }
+}
+
+// 필터 처리 함수
+async function handleFilter(req, res) {
+    const { results, filters } = req.method === 'GET' ? req.query : req.body;
+    
+    try {
+        const filteredResults = applyFilters(results, filters);
+        
+        res.status(200).json({
+            success: true,
+            data: filteredResults,
+            message: `필터 적용 완료 - 원본 ${results.length}개 → 필터 후 ${filteredResults.length}개 결과`
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+            data: results
+        });
+    }
+}
+
+// 정렬 처리 함수
+async function handleSort(req, res) {
+    const { results, column, order } = req.method === 'GET' ? req.query : req.body;
+    
+    try {
+        const sortedResults = sortTable(parseInt(column), order, results);
+        
+        res.status(200).json({
+            success: true,
+            data: sortedResults,
+            message: '정렬 완료'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+            data: results
+        });
+    }
 }
 
 // YouTube 검색 메인 함수
-async function searchYouTubeVideos(searchParams) {
+async function searchYouTubeVideos(searchParams, apiKeys) {
     const { keyword, maxResults, timeFrame, regionCode, sortBy, videoLicense } = searchParams;
+    
+    let currentApiIndex = 0;
+    
+    // 현재 사용 중인 API 키 반환
+    function getCurrentApiKey() {
+        if (apiKeys.length === 0) return null;
+        if (currentApiIndex >= apiKeys.length) currentApiIndex = 0;
+        return apiKeys[currentApiIndex];
+    }
+    
+    // 다음 API 키로 로테이션
+    function rotateToNextApiKey() {
+        if (apiKeys.length <= 1) return false;
+        currentApiIndex = (currentApiIndex + 1) % apiKeys.length;
+        console.log(`API 키 로테이션: 인덱스 ${currentApiIndex}로 전환`);
+        return true;
+    }
     
     // API 요청 함수 (로테이션 지원)
     async function makeApiRequest(url, maxRetries = apiKeys.length) {
@@ -121,7 +214,7 @@ async function searchYouTubeVideos(searchParams) {
     
     // 기간 설정 로직
     if (timeFrame === 'custom') {
-        // 날짜 직접 선택 로직
+        // 날짜 직접 선택 로직 (프론트엔드에서 처리)
         const startDate = searchParams.startDate;
         const endDate = searchParams.endDate;
         
@@ -165,7 +258,7 @@ async function searchYouTubeVideos(searchParams) {
     let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet&` +
-        `type=${isVideoSearch ? 'video' : 'channel'}&` +
+        `type=video&` +
         `maxResults=${maxResults}&` +
         `order=${sortBy}&` +
         `regionCode=${regionCode}`;
@@ -198,6 +291,10 @@ async function searchYouTubeVideos(searchParams) {
     }
 
     const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
+
+    if (!searchData.items || searchData.items.length === 0) {
+        return [];
+    }
 
     // 비디오 상세 정보 가져오기
     const videoIds = searchData.items.map(item => item.id.videoId).join(',');
@@ -274,12 +371,8 @@ async function searchYouTubeVideos(searchParams) {
         };
     });
 
-    // 정렬 처리
-    if (isViewsSort) {
-        results = results.sort((a, b) => b.viewCount - a.viewCount);
-    } else {
-        results = results.sort((a, b) => new Date(b.publishedAtRaw) - new Date(a.publishedAtRaw));
-    }
+    // 정렬 처리 (조회수순 기본)
+    results = results.sort((a, b) => b.viewCount - a.viewCount);
     
     // 인덱스 재조정
     results = results.map((item, index) => ({
@@ -287,16 +380,25 @@ async function searchYouTubeVideos(searchParams) {
         index: index + 1
     }));
 
-    // 크리에이티브 커먼즈 필터링
-    if (!isAllVideos) {
-        results = results.filter(video => video.license === 'creativeCommon');
-    }
-
     return results;
 }
 
 // 단일 비디오 데이터 가져오기
-async function fetchSingleVideoData(videoId) {
+async function fetchSingleVideoData(videoId, apiKeys) {
+    let currentApiIndex = 0;
+    
+    function getCurrentApiKey() {
+        if (apiKeys.length === 0) return null;
+        if (currentApiIndex >= apiKeys.length) currentApiIndex = 0;
+        return apiKeys[currentApiIndex];
+    }
+    
+    function rotateToNextApiKey() {
+        if (apiKeys.length <= 1) return false;
+        currentApiIndex = (currentApiIndex + 1) % apiKeys.length;
+        return true;
+    }
+
     async function makeApiRequest(url, maxRetries = apiKeys.length) {
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentKey = getCurrentApiKey();
@@ -423,44 +525,44 @@ async function fetchSingleVideoData(videoId) {
 }
 
 // 필터 적용 함수
-function applyFilters(results) {
+function applyFilters(results, filters) {
     let filteredResults = [];
     
     for (let result of results) {
         let shouldInclude = true;
         
         // 비디오 타입 필터 (쇼츠/롱폼)
-        if (filterState.shorts || filterState.longform) {
+        if (filters.shorts || filters.longform) {
             const isShorts = result.isShorts || false;
             
-            if (filterState.shorts && !filterState.longform) {
+            if (filters.shorts && !filters.longform) {
                 if (!isShorts) shouldInclude = false;
-            } else if (filterState.longform && !filterState.shorts) {
+            } else if (filters.longform && !filters.shorts) {
                 if (isShorts) shouldInclude = false;
             }
         }
         
         // CII 필터
-        if (filterState.ciiGreat || filterState.ciiGood || filterState.ciiSoso) {
+        if (filters.ciiGreat || filters.ciiGood || filters.ciiSoso) {
             const cii = result.cii;
-            if (!((filterState.ciiGreat && cii === 'Great!!') ||
-                  (filterState.ciiGood && cii === 'Good') ||
-                  (filterState.ciiSoso && cii === 'Soso'))) {
+            if (!((filters.ciiGreat && cii === 'Great!!') ||
+                  (filters.ciiGood && cii === 'Good') ||
+                  (filters.ciiSoso && cii === 'Soso'))) {
                 shouldInclude = false;
             }
         }
         
         // 조회수 필터
-        if (filterState.viewCount) {
-            const minViews = parseInt(filterState.viewCount);
+        if (filters.viewCount) {
+            const minViews = parseInt(filters.viewCount);
             if (result.viewCount < minViews) {
                 shouldInclude = false;
             }
         }
         
         // 구독자수 필터 (이하 조건)
-        if (filterState.subscriberCount) {
-            const maxSubscribers = parseInt(filterState.subscriberCount);
+        if (filters.subscriberCount) {
+            const maxSubscribers = parseInt(filters.subscriberCount);
             if (result.subscriberCount > maxSubscribers) {
                 shouldInclude = false;
             }
@@ -474,140 +576,10 @@ function applyFilters(results) {
     return filteredResults;
 }
 
-// 번역 기능
-async function deeplTranslate(text, targetLang) {
-    const DEEPL_API_KEY = "be5e533d-d3c1-42a8-8b18-487283baccb5:fx";
-    
-    const deeplLangMap = {
-        "ja": "JA", "en": "EN-US", "ko": "KO", "zh-TW": "ZH",
-        "fr": "FR", "de": "DE", "es": "ES", "pt": "PT-BR",
-        "ru": "RU", "hi": "EN-US"
-    };
-    
-    const deeplTarget = deeplLangMap[targetLang] || targetLang.toUpperCase();
-    
-    try {
-        const response = await fetch('https://api-free.deepl.com/v2/translate', {
-            method: 'POST',
-            headers: {
-                'Authorization': `DeepL-Auth-Key ${DEEPL_API_KEY}`,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                'text': text,
-                'target_lang': deeplTarget,
-                'source_lang': 'KO'
-            })
-        });
-        
-        if (!response.ok) {
-            if (response.status === 403 || response.status === 456) {
-                throw new Error('DeepL 할당량 초과');
-            }
-            throw new Error(`DeepL API 오류: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        if (data.translations && data.translations.length > 0) {
-            return data.translations[0].text;
-        }
-        throw new Error('DeepL 번역 결과 없음');
-        
-    } catch (error) {
-        throw error;
-    }
-}
-
-async function googleTranslate(text, targetLang) {
-    try {
-        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
-        const data = await response.json();
-        
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-            return data[0][0][0];
-        }
-        return null;
-    } catch (error) {
-        console.error('Google Translate 오류:', error);
-        return null;
-    }
-}
-
-// 유틸리티 함수들
-function formatDuration(duration) {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-    const hours = (match[1] || '').replace('H', '');
-    const minutes = (match[2] || '').replace('M', '');
-    const seconds = (match[3] || '').replace('S', '');
-    
-    if (hours) {
-        return `${hours}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`;
-    } else {
-        return `${minutes || '0'}:${seconds.padStart(2, '0')}`;
-    }
-}
-
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ko-KR', {timeZone: 'Asia/Seoul'}) + ' ' + 
-           date.toLocaleTimeString('ko-KR', {timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit'});
-}
-
-function formatSubscribers(num) {
-    return num.toLocaleString() + '명';
-}
-
-function formatViews(num) {
-    return num.toLocaleString() + '회';
-}
-
-function formatCount(num) {
-    return num.toLocaleString() + '개';
-}
-
-function formatPercentage(num) {
-    if (Math.abs(num) < 0.0001) {
-        return '0%';
-    } else if (num < 1) {
-        return num.toFixed(1) + '%';
-    } else {
-        return Math.round(num) + '%';
-    }
-}
-
-function formatMultiplier(num) {
-    if (Math.abs(num) < 0.0001) {
-        return '0배';
-    } else if (num < 1) {
-        return num.toFixed(1) + '배';
-    } else {
-        return Math.round(num) + '배';
-    }
-}
-
-// YouTube URL에서 비디오 ID 추출
-function extractVideoId(url) {
-    if (!url) return null;
-    
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-        /youtube\.com\/watch\?.*v=([^&\n?#]+)/
-    ];
-    
-    for (let pattern of patterns) {
-        const match = url.match(pattern);
-        if (match && match[1]) {
-            return match[1];
-        }
-    }
-    
-    return null;
-}
-
 // 테이블 정렬 함수
 function sortTable(column, order, results) {
     if (order === 'reset') {
-        return originalResults.slice();
+        return results.slice();
     }
     
     const sortedResults = [...results].sort((a, b) => {
@@ -689,6 +661,26 @@ function sortTable(column, order, results) {
     }));
 }
 
+// 유틸리티 함수들
+function formatDuration(duration) {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    const hours = (match[1] || '').replace('H', '');
+    const minutes = (match[2] || '').replace('M', '');
+    const seconds = (match[3] || '').replace('S', '');
+    
+    if (hours) {
+        return `${hours}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`;
+    } else {
+        return `${minutes || '0'}:${seconds.padStart(2, '0')}`;
+    }
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ko-KR', {timeZone: 'Asia/Seoul'}) + ' ' + 
+           date.toLocaleTimeString('ko-KR', {timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit'});
+}
+
 function durationToSeconds(duration) {
     if (!duration || duration === '') return 0;
     
@@ -703,125 +695,21 @@ function durationToSeconds(duration) {
     }
 }
 
-// API 엔드포인트 함수들 (frontend와 연동용)
-const BackendAPI = {
-    // 검색 API
-    async search(searchParams) {
-        try {
-            const results = await searchYouTubeVideos(searchParams);
-            originalResults = results.slice();
-            searchResults = results.slice();
-            
-            return {
-                success: true,
-                data: results,
-                message: `검색 완료 - ${results.length}개 결과`
-            };
-        } catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                data: []
-            };
+// YouTube URL에서 비디오 ID 추출
+function extractVideoId(url) {
+    if (!url) return null;
+    
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+    
+    for (let pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
         }
-    },
-
-    // URL 분석 API
-    async analyzeUrl(url) {
-        try {
-            const videoId = extractVideoId(url);
-            if (!videoId) {
-                throw new Error('올바른 YouTube URL을 입력해주세요.');
-            }
-            
-            const result = await fetchSingleVideoData(videoId);
-            if (!result) {
-                throw new Error('비디오 정보를 찾을 수 없습니다.');
-            }
-            
-            originalResults = [result];
-            searchResults = [result];
-            
-            return {
-                success: true,
-                data: [result],
-                message: 'URL 분석 완료'
-            };
-        } catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                data: []
-            };
-        }
-    },
-
-    // 필터 적용 API
-    async applyFilters(filters) {
-        try {
-            filterState = { ...filterState, ...filters };
-            const filteredResults = applyFilters(originalResults);
-            searchResults = filteredResults;
-            
-            return {
-                success: true,
-                data: filteredResults,
-                message: `필터 적용 완료 - 원본 ${originalResults.length}개 → 필터 후 ${filteredResults.length}개 결과`
-            };
-        } catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                data: searchResults
-            };
-        }
-    },
-
-    // 정렬 API
-    async sortResults(column, order) {
-        try {
-            const sortedResults = sortTable(column, order, searchResults);
-            searchResults = sortedResults;
-            
-            return {
-                success: true,
-                data: sortedResults,
-                message: '정렬 완료'
-            };
-        } catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                data: searchResults
-            };
-        }
-    },
-
-    // API 키 관리
-    setApiKeys(keys) {
-        apiKeys = keys;
-        currentApiIndex = 0;
-    },
-
-    // 상태 설정
-    setToggleStates(states) {
-        isViewsSort = states.isViewsSort;
-        isAllVideos = states.isAllVideos;
-        isVideoSearch = states.isVideoSearch;
-    },
-
-    // 게이지 바 생성
-    createGauge(value) {
-        return createGaugeBar(value);
     }
-};
-
-// Node.js 환경에서 모듈로 내보내기 (선택사항)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BackendAPI;
-}
-
-// 브라우저 환경에서 전역 객체로 등록
-if (typeof window !== 'undefined') {
-    window.YouTubeLensBackend = BackendAPI;
+    
+    return null;
 }
