@@ -1918,9 +1918,36 @@
             }
         });
 
+        // API 키 초기화
+        function initializeApiKeys() {
+            try {
+                const savedApiKeys = localStorage.getItem('youtube_api_keys');
+                const savedApiIndex = localStorage.getItem('current_api_index');
+                
+                if (savedApiKeys) {
+                    apiKeys = JSON.parse(savedApiKeys);
+                }
+                
+                if (savedApiIndex) {
+                    currentApiKeyIndex = parseInt(savedApiIndex) || 0;
+                }
+                
+                console.log('🔑 API 키 초기화 완료:', apiKeys.length + '개');
+                updateApiKeysList();
+                
+            } catch (error) {
+                console.error('API 키 초기화 오류:', error);
+                apiKeys = [];
+                currentApiKeyIndex = 0;
+            }
+        }
+        
         // 초기 인증 상태 확인
         async function initializeAuth() {
             console.log('🚀 YouTube Lens 인증 시스템 초기화');
+            
+            // API 키 초기화 먼저 수행
+            initializeApiKeys();
             
             const savedLicenseKey = localStorage.getItem('licenseKey');
             const savedAuthResult = localStorage.getItem('authResult');
@@ -1960,6 +1987,91 @@
             }
         }
 
+        // API 키 관리 함수들
+        function addApiKey() {
+            const newKeyInput = document.getElementById('newApiKeyInput');
+            const newKey = newKeyInput.value.trim();
+            
+            if (!newKey) {
+                alert('API 키를 입력해주세요.');
+                return;
+            }
+            
+            // 중복 확인
+            if (apiKeys.includes(newKey)) {
+                alert('이미 등록된 API 키입니다.');
+                return;
+            }
+            
+            apiKeys.push(newKey);
+            localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
+            
+            newKeyInput.value = '';
+            updateApiKeysList();
+            
+            console.log('✅ API 키 추가됨:', apiKeys.length + '개');
+            alert('API 키가 추가되었습니다.');
+        }
+        
+        function removeApiKey(index) {
+            if (confirm('이 API 키를 삭제하시겠습니까?')) {
+                apiKeys.splice(index, 1);
+                
+                // 현재 인덱스 조정
+                if (currentApiKeyIndex >= apiKeys.length) {
+                    currentApiKeyIndex = 0;
+                }
+                
+                localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
+                localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
+                
+                updateApiKeysList();
+                console.log('🗑️ API 키 삭제됨:', apiKeys.length + '개 남음');
+            }
+        }
+        
+        function updateApiKeysList() {
+            const listContainer = document.getElementById('apiKeysList');
+            
+            if (!listContainer) {
+                console.warn('API 키 목록 컨테이너를 찾을 수 없습니다.');
+                return;
+            }
+            
+            if (apiKeys.length === 0) {
+                listContainer.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">등록된 API 키가 없습니다.</div>';
+                return;
+            }
+            
+            listContainer.innerHTML = apiKeys.map((key, index) => {
+                const isActive = index === currentApiKeyIndex;
+                const maskedKey = key.substring(0, 8) + '...' + key.substring(key.length - 4);
+                
+                return `
+                    <div class="api-key-item ${isActive ? 'active' : ''}">
+                        <span class="api-key-text">${maskedKey}</span>
+                        <span class="api-key-status ${isActive ? 'status-active' : 'status-standby'}">
+                            ${isActive ? '사용중' : '대기중'}
+                        </span>
+                        <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'block';
+            updateApiKeysList();
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+        
+        function openApiGuide() {
+            window.open('https://www.youtube.com/watch?v=1HPv97VwHFM&feature=youtu.be', '_blank');
+        }
+        
         // 기능 보호 함수
         function requireAuth(functionName) {
             if (!userAuthenticated) {
@@ -2131,8 +2243,10 @@
                     regionCode: document.getElementById('regionCode').value,
                     startDate: document.getElementById('startDate').value,
                     endDate: document.getElementById('endDate').value,
-                    sortBy: isViewsSort ? 'viewCount' : 'date',
-                    videoLicense: isAllVideos ? 'any' : 'creativeCommon'
+                    isViewsSort: isViewsSort,
+                    isAllVideos: isAllVideos,
+                    isVideoSearch: isVideoSearch,
+                    apiKeys: apiKeys
                 };
                 
                 console.log('📤 프론트엔드에서 보내는 데이터:', searchParams);
@@ -2173,7 +2287,10 @@
             updateStatus('URL 분석 중...');
             
             try {
-                const result = await callBackendAPI('analyze', { url: url });
+                const result = await callBackendAPI('analyze', { 
+                    url: url,
+                    apiKeys: apiKeys
+                });
                 
                 originalResults = result.data;
                 currentResults = [...originalResults];
@@ -3482,6 +3599,18 @@
             if (e.target === this) {
                 closeSettings();
             }
+        });
+        
+        // 앱 시작하기 버튼
+        function continueToApp() {
+            authModal.style.display = 'none';
+            document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
+        }
+        
+        // 페이지 로드 완료 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 YouTube Lens 시작');
+            initializeAuth();
         });
     </script>
 </body>
