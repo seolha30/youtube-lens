@@ -2224,8 +2224,9 @@
             }
             
             const keyword = document.getElementById('searchKeyword').value.trim();
-            if (!keyword) {
-                alert('검색할 키워드를 입력해주세요.');
+            // 검색어가 없어도 조회수순 검색 가능 (test.html처럼)
+            if (!keyword && !isViewsSort) {
+                alert('최신순 검색에는 키워드가 필요합니다.');
                 return;
             }
             
