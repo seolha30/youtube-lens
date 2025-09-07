@@ -2148,6 +2148,12 @@
             }
         }
 
+        // 현재 사용 중인 API 키 반환
+        function getCurrentApiKey() {
+            if (apiKeys.length === 0) return null;
+            return apiKeys[0]; // 첫 번째 API 키 사용
+        }
+
         // API 키 관리 함수들
         function openSettings() {
             if (!requireAuth('API 키 설정')) return;
@@ -2256,36 +2262,35 @@
             // 모달 HTML 생성
             const modalHtml = `
                 <div class="settings-modal" id="videoModal" style="display: block;">
-                    <div class="settings-content" style="max-width: 900px; max-height: 85vh; overflow: hidden; background: #1a1a1a; padding: 0; border-radius: 12px;">
+                    <div class="settings-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
                         <button class="close-btn" onclick="closeVideoModal()">&times;</button>
-                        <div style="padding: 15px 20px 10px 20px; border-bottom: 1px solid #444; background: #1a1a1a;">
-                            <h3 style="margin: 0; color: #2196F3; font-size: 16px;">📺 비디오 보기</h3>
-                            <div style="margin-top: 5px; font-size: 12px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${videoTitle}</div>
+                        <h3 style="margin-bottom: 20px; color: #2196F3;">🎬 영상 재생</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <strong style="color: white; font-size: 16px;">비디오 제목:</strong>
+                            <div style="margin-top: 8px; padding: 12px; background: #2a2a2a; border-radius: 6px; color: #fff; font-size: 14px; line-height: 1.4;">${videoTitle}</div>
                         </div>
-                        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
-                            <iframe 
-                                src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen>
+                        
+                        <div style="margin-bottom: 20px; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+                            <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: 8px;" 
+                                    src="https://www.youtube.com/embed/${videoId}" 
+                                    allowfullscreen>
                             </iframe>
                         </div>
-                        <div style="padding: 10px 20px; background: #1a1a1a; display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="window.open('https://www.youtube.com/watch?v=${videoId}', '_blank')" style="background: #f44336; color: white; border: none; border-radius: 5px; padding: 8px 16px; font-weight: bold; cursor: pointer;">YouTube에서 보기</button>
-                            <button onclick="closeVideoModal()" style="background: #666; color: white; border: none; border-radius: 5px; padding: 8px 16px; font-weight: bold; cursor: pointer;">닫기</button>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                            <button class="btn" onclick="window.open('https://www.youtube.com/watch?v=${videoId}', '_blank')" 
+                                    style="background: #f44336; color: white; flex: 1; min-width: 120px;">📺 YouTube 열기</button>
+                            <button class="btn" onclick="collectSubtitle('${videoId}')" 
+                                    style="background: #4CAF50; color: white; flex: 1; min-width: 120px;">🎤 자막수집</button>
+                            <button class="btn" onclick="closeVideoModal()" 
+                                    style="background: #666; color: white; flex: 1; min-width: 100px;">✖ 닫기</button>
                         </div>
                     </div>
                 </div>
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // 외부 클릭 시 닫기
-            document.getElementById('videoModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeVideoModal();
-                }
-            });
         }
         
         // 비디오 모달 닫기
