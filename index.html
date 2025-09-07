@@ -1744,25 +1744,488 @@
             }
         });
 
-        // 더미 함수들 (나중에 test.html에서 복사)
-        function showVideoModal(videoId, title) {
-            console.log('비디오 모달:', videoId, title);
+        // 비디오 모달 (썸네일 클릭)
+        function showVideoModal(videoId, videoTitle) {
+            // 기존 모달 제거
+            const existingModal = document.getElementById('videoModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // YouTube 임베드 URL 생성
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+            
+            // 모달 생성
+            const modal = document.createElement('div');
+            modal.id = 'videoModal';
+            modal.className = 'settings-modal';
+            modal.style.display = 'block';
+            
+            const content = document.createElement('div');
+            content.className = 'settings-content';
+            content.style.cssText = `
+                max-width: 90vw;
+                max-height: 90vh;
+                width: 1000px;
+                background: #000;
+                padding: 0;
+                border-radius: 8px;
+                overflow: hidden;
+            `;
+            
+            // 헤더
+            const header = document.createElement('div');
+            header.style.cssText = `
+                padding: 10px 15px;
+                background: #333;
+                color: white;
+                position: relative;
+                border-bottom: 1px solid #555;
+            `;
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = () => modal.remove();
+            
+            const title = document.createElement('h3');
+            title.textContent = videoTitle || '영상 재생';
+            title.style.cssText = `
+                margin: 0;
+                color: white;
+                font-size: 16px;
+                padding-right: 40px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            `;
+            
+            header.appendChild(closeBtn);
+            header.appendChild(title);
+            
+            // 비디오 영역
+            const videoContainer = document.createElement('div');
+            videoContainer.style.cssText = `
+                position: relative;
+                width: 100%;
+                height: 0;
+                padding-bottom: 56.25%; /* 16:9 비율 */
+                background: #000;
+            `;
+            
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: none;
+            `;
+            iframe.src = embedUrl;
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            iframe.allowFullscreen = true;
+            
+            videoContainer.appendChild(iframe);
+            
+            // 모달 조립
+            content.appendChild(header);
+            content.appendChild(videoContainer);
+            modal.appendChild(content);
+            
+            // 외부 클릭 이벤트
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            };
+            
+            document.body.appendChild(modal);
         }
         
-        function showDetailedChannelInfo(channelId, channelTitle) {
-            console.log('채널 정보:', channelId, channelTitle);
+        // 채널 정보 모달 (채널명 클릭)
+        async function showDetailedChannelInfo(channelId, channelName) {
+            const currentKey = getCurrentApiKey();
+            if (!currentKey) {
+                alert('API 키가 설정되지 않았습니다.');
+                return;
+            }
+            
+            // 기존 모달 제거
+            const existingModal = document.getElementById('channelModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 로딩 모달 생성
+            const modal = document.createElement('div');
+            modal.id = 'channelModal';
+            modal.className = 'settings-modal';
+            modal.style.display = 'block';
+            
+            const content = document.createElement('div');
+            content.className = 'settings-content';
+            content.style.cssText = `
+                max-width: 800px;
+                max-height: 80vh;
+                background: #2C5530;
+                padding: 0;
+                border-radius: 12px;
+                overflow: hidden;
+            `;
+            
+            // 로딩 표시
+            content.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: white;">
+                    <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                    <div>채널 정보를 불러오는 중...</div>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            try {
+                // 백엔드 API 호출
+                const response = await fetch('/api/backend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'channelInfo',
+                        channelId: channelId,
+                        apiKeys: apiKeys
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.message || '채널 정보를 가져올 수 없습니다.');
+                }
+                
+                const channelData = result.data;
+                
+                // 실제 내용으로 교체
+                content.innerHTML = `
+                    <div style="padding: 15px; background: #2C5530; position: relative;">
+                        <button class="close-btn" onclick="document.getElementById('channelModal').remove()">&times;</button>
+                        <h3 style="margin: 0; color: white; font-size: 18px;">📋 채널 정보</h3>
+                    </div>
+                    
+                    <div style="padding: 20px; background: #2C5530; color: white; max-height: 500px; overflow-y: auto;">
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #4CAF50; margin-bottom: 10px;">기본 정보</h4>
+                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                                <div><strong>채널명:</strong> ${channelData.channelInfo.snippet.title}</div>
+                                <div style="margin-top: 10px;"><strong>구독자:</strong> ${formatCount(channelData.channelInfo.statistics.subscriberCount)}</div>
+                                <div style="margin-top: 10px;"><strong>총 영상 수:</strong> ${formatCount(channelData.channelInfo.statistics.videoCount)}</div>
+                                <div style="margin-top: 10px;"><strong>총 조회수:</strong> ${formatViews(channelData.channelInfo.statistics.viewCount)}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #4CAF50; margin-bottom: 10px;">인기 영상 TOP 3</h4>
+                            ${channelData.top3Videos.map((video, index) => `
+                                <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                                    <div style="font-weight: bold;">${index + 1}. ${video.snippet.title}</div>
+                                    <div style="margin-top: 5px; font-size: 12px;">
+                                        조회수: ${formatViews(video.viewCount)} | 
+                                        기여도: ${video.contribution.toFixed(1)}% | 
+                                        성과도: ${video.performance.toFixed(1)}배
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button onclick="document.getElementById('channelModal').remove()" 
+                                    style="background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('채널 정보 오류:', error);
+                content.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: white;">
+                        <div style="color: #f44336; margin-bottom: 10px;">❌</div>
+                        <div>채널 정보를 가져올 수 없습니다.</div>
+                        <div style="font-size: 12px; margin-top: 10px; color: #ccc;">${error.message}</div>
+                        <button onclick="document.getElementById('channelModal').remove()" 
+                                style="background: #666; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 15px;">
+                            닫기
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // 외부 클릭 이벤트
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            };
         }
         
-        function showCommentsModal(videoId, title) {
-            console.log('댓글 모달:', videoId, title);
+        // 댓글 모달 (댓글수 클릭)
+        function showCommentsModal(videoId, videoTitle) {
+            // 임시로 간단한 모달 구현 (실제 댓글 API는 별도 구현 필요)
+            const modal = document.createElement('div');
+            modal.id = 'commentsModal';
+            modal.className = 'settings-modal';
+            modal.style.display = 'block';
+            
+            const content = document.createElement('div');
+            content.className = 'settings-content';
+            content.style.cssText = `
+                max-width: 600px;
+                max-height: 80vh;
+                background: #E8F4FD;
+                padding: 0;
+                border-radius: 12px;
+                overflow: hidden;
+            `;
+            
+            content.innerHTML = `
+                <div style="padding: 15px; background: #E8F4FD; position: relative; border-bottom: 1px solid #ccc;">
+                    <button class="close-btn" onclick="document.getElementById('commentsModal').remove()">&times;</button>
+                    <h3 style="margin: 0; color: #1A365D; font-size: 16px;">💬 댓글 분석</h3>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${videoTitle}
+                    </div>
+                </div>
+                
+                <div style="padding: 20px; color: #1A365D; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">🚧</div>
+                    <div style="font-size: 16px; margin-bottom: 10px;">댓글 분석 기능</div>
+                    <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        YouTube API의 댓글 기능은 별도 구현이 필요합니다.<br>
+                        현재는 기본 정보만 제공됩니다.
+                    </div>
+                    <button onclick="window.open('https://www.youtube.com/watch?v=${videoId}', '_blank')" 
+                            style="background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                        YouTube에서 보기
+                    </button>
+                    <button onclick="document.getElementById('commentsModal').remove()" 
+                            style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                        닫기
+                    </button>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            
+            // 외부 클릭 이벤트
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            };
+            
+            document.body.appendChild(modal);
         }
         
-        function showDescriptionModal(videoId, title) {
-            console.log('설명 모달:', videoId, title);
+        // 설명 모달 (이미 구현됨 - 기존 코드 유지)
+        function showDescriptionModal(videoId, videoTitle) {
+            // 기존 모달 제거
+            const existingModal = document.getElementById('descriptionModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 원본 설명 가져오기
+            let originalDescription = videoDescriptions[videoId] || '';
+            
+            // 최종 텍스트 정리
+            let finalText = originalDescription
+                .replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]+/g, ' ')
+                .replace(/^\s+|\s+$/g, '')
+                .replace(/\s+/g, ' ');
+            
+            // 모달 생성
+            const modal = document.createElement('div');
+            modal.id = 'descriptionModal';
+            modal.className = 'settings-modal';
+            modal.style.display = 'block';
+            
+            const content = document.createElement('div');
+            content.className = 'settings-content';
+            content.style.cssText = `
+                max-width: 700px;
+                max-height: 80vh;
+                overflow: hidden;
+                background: #D2E9E1;
+                padding: 0;
+                border-radius: 12px;
+            `;
+            
+            content.innerHTML = `
+                <div style="padding: 12px 15px 8px 15px; border-bottom: 1px solid #ccc; background: #D2E9E1; position: relative;">
+                    <button class="close-btn" onclick="document.getElementById('descriptionModal').remove()">&times;</button>
+                    <h3 style="margin: 0; color: #1A365D; font-size: 16px; font-weight: bold;">📝 영상 설명</h3>
+                    <div style="margin-top: 5px; font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${videoTitle}
+                    </div>
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto; background: #D2E9E1; padding: 10px;">
+                    ${finalText ? `
+                        <div style="background: white; border-radius: 6px; padding: 8px; color: black; font-size: 14px; line-height: 1.5; word-wrap: break-word; white-space: normal;">
+                            ${finalText}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <div style="font-size: 16px; margin-bottom: 8px;">📝</div>
+                            <div>설명이 없습니다.</div>
+                        </div>
+                    `}
+                </div>
+                
+                <div style="padding: 8px 15px; border-top: 1px solid #ccc; background: #D2E9E1; display: flex; gap: 8px; justify-content: center;">
+                    ${finalText ? `
+                        <button onclick="copyToClipboard('${finalText.replace(/'/g, "\\'")}', this)" 
+                                style="background: #FF9800; color: white; border: none; border-radius: 5px; padding: 6px 12px; font-weight: bold; cursor: pointer; width: 80px; font-size: 12px;">
+                            설명복사
+                        </button>
+                    ` : ''}
+                    <button onclick="document.getElementById('descriptionModal').remove()" 
+                            style="background: #4a9eff; color: white; border: none; border-radius: 5px; padding: 6px 12px; font-weight: bold; cursor: pointer; width: 80px; font-size: 12px;">
+                        닫기
+                    </button>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            
+            // 외부 클릭 이벤트
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            };
+            
+            document.body.appendChild(modal);
         }
         
+        // 자막 모달 (자막수집 완료 후 표시)
         function showSubtitleModal(data) {
-            console.log('자막 모달:', data);
+            // 기존 모달 제거
+            const existingModal = document.getElementById('subtitleModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            const modal = document.createElement('div');
+            modal.id = 'subtitleModal';
+            modal.className = 'settings-modal';
+            modal.style.display = 'block';
+            
+            const content = document.createElement('div');
+            content.className = 'settings-content';
+            content.style.cssText = `
+                max-width: 800px;
+                max-height: 80vh;
+                background: #FFF8E1;
+                padding: 0;
+                border-radius: 12px;
+                overflow: hidden;
+            `;
+            
+            const subtitles = data.subtitles || [];
+            const videoInfo = data.videoInfo || {};
+            
+            content.innerHTML = `
+                <div style="padding: 15px; background: #FFF8E1; position: relative; border-bottom: 1px solid #ccc;">
+                    <button class="close-btn" onclick="document.getElementById('subtitleModal').remove()">&times;</button>
+                    <h3 style="margin: 0; color: #E65100; font-size: 16px;">📝 자막 수집 결과</h3>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                        ${videoInfo.title || '제목 정보 없음'} (${subtitles.length}개 자막)
+                    </div>
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto; background: #FFF8E1; padding: 15px;">
+                    ${subtitles.length > 0 ? `
+                        <div style="background: white; border-radius: 8px; padding: 10px; margin-bottom: 15px;">
+                            ${subtitles.map((sub, index) => `
+                                <div style="margin-bottom: 8px; padding: 5px; border-left: 3px solid #FF9800;">
+                                    <div style="font-size: 12px; color: #666; margin-bottom: 3px;">
+                                        ${sub.start || '00:00'} - ${sub.end || '00:00'}
+                                    </div>
+                                    <div style="font-size: 14px; line-height: 1.4;">
+                                        ${sub.text || '자막 텍스트 없음'}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+                            <div style="font-size: 16px; margin-bottom: 10px;">자막을 찾을 수 없습니다</div>
+                            <div style="font-size: 12px;">이 영상에는 자막이 없거나 자막 수집에 실패했습니다.</div>
+                        </div>
+                    `}
+                </div>
+                
+                <div style="padding: 10px 15px; border-top: 1px solid #ccc; background: #FFF8E1; display: flex; gap: 8px; justify-content: center;">
+                    ${subtitles.length > 0 ? `
+                        <button onclick="copySubtitlesToClipboard()" 
+                                style="background: #FF9800; color: white; border: none; border-radius: 5px; padding: 8px 16px; font-weight: bold; cursor: pointer;">
+                            전체 자막 복사
+                        </button>
+                    ` : ''}
+                    <button onclick="document.getElementById('subtitleModal').remove()" 
+                            style="background: #666; color: white; border: none; border-radius: 5px; padding: 8px 16px; font-weight: bold; cursor: pointer;">
+                        닫기
+                    </button>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            
+            // 외부 클릭 이벤트
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            };
+            
+            document.body.appendChild(modal);
+        }
+        
+        // 유틸리티 함수들
+        function copyToClipboard(text, button) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = '복사완료';
+                    setTimeout(() => button.textContent = originalText, 1500);
+                });
+            } else {
+                // fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                const originalText = button.textContent;
+                button.textContent = '복사완료';
+                setTimeout(() => button.textContent = originalText, 1500);
+            }
+        }
+        
+        function copySubtitlesToClipboard() {
+            const modal = document.getElementById('subtitleModal');
+            if (!modal) return;
+            
+            const subtitleElements = modal.querySelectorAll('[style*="font-size: 14px"]');
+            const allText = Array.from(subtitleElements).map(el => el.textContent.trim()).join('\n');
+            
+            copyToClipboard(allText, event.target);
         }
     </script>
 </body>
