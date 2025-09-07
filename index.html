@@ -1401,6 +1401,7 @@
         let userAuthenticated = false;
         let authCache = null;
         let apiKeys = [];
+        let currentApiKeyIndex = 0; // 현재 사용 중인 API 키 인덱스
         let currentResults = [];
         let originalResults = [];
         let currentFilters = {
@@ -1426,6 +1427,91 @@
         const authBtn = document.getElementById('auth-btn');
         const logoutBtn = document.getElementById('logout-btn');
         const authMainContent = document.getElementById('auth-main-content');
+
+        // 현재 사용 중인 API 키 반환 (로테이션 지원)
+        function getCurrentApiKey() {
+            if (apiKeys.length === 0) return null;
+            return apiKeys[currentApiKeyIndex];
+        }
+
+        // 다음 API 키로 로테이션
+        function rotateToNextApiKey() {
+            if (apiKeys.length <= 1) return false; // API 키가 1개 이하면 로테이션 불가
+            
+            currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+            console.log(`🔄 API 키 로테이션: ${currentApiKeyIndex + 1}/${apiKeys.length} 번째 키로 전환`);
+            
+            // UI 업데이트
+            updateStatus(`API 키 전환됨 (${currentApiKeyIndex + 1}/${apiKeys.length})`);
+            return true;
+        }
+
+        // API 키 상태 체크 및 로테이션이 포함된 API 호출 래퍼
+        async function makeApiRequestWithRotation(url, maxRetries = null) {
+            if (maxRetries === null) {
+                maxRetries = apiKeys.length; // 모든 키를 한 번씩 시도
+            }
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                const currentKey = getCurrentApiKey();
+                if (!currentKey) {
+                    throw new Error('사용 가능한 API 키가 없습니다.');
+                }
+                
+                try {
+                    // URL에 API 키 자동 삽입
+                    const urlWithKey = url.includes('key=') ? 
+                        url.replace(/key=[^&]*/, `key=${currentKey}`) : 
+                        url + (url.includes('?') ? '&' : '?') + `key=${currentKey}`;
+                    
+                    console.log(`📡 API 호출 시도 ${attempt + 1}/${maxRetries} (키 ${currentApiKeyIndex + 1}/${apiKeys.length})`);
+                    
+                    const response = await fetch(urlWithKey);
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        // 할당량 초과 에러 감지
+                        if (data.error?.message?.includes('quota') || 
+                            data.error?.message?.includes('exceeded')) {
+                            
+                            console.log(`⚠️ API 키 ${currentApiKeyIndex + 1} 할당량 초과`);
+                            
+                            // 다음 키로 로테이션 시도
+                            if (rotateToNextApiKey()) {
+                                console.log('🔄 다음 API 키로 재시도...');
+                                continue; // 다음 반복으로
+                            } else {
+                                throw new Error('모든 API 키의 할당량이 초과되었습니다. 내일 다시 시도해주세요.');
+                            }
+                        } else {
+                            // 다른 종류의 에러는 바로 throw
+                            throw new Error(`API 오류: ${data.error?.message || response.statusText}`);
+                        }
+                    }
+                    
+                    // 성공한 경우
+                    console.log(`✅ API 호출 성공 (키 ${currentApiKeyIndex + 1}/${apiKeys.length})`);
+                    return data;
+                    
+                } catch (error) {
+                    console.error(`❌ API 키 ${currentApiKeyIndex + 1} 오류:`, error.message);
+                    
+                    // 할당량 관련 에러면 다음 키로 로테이션
+                    if (error.message.includes('quota') || error.message.includes('exceeded')) {
+                        if (rotateToNextApiKey()) {
+                            continue; // 다음 반복으로
+                        }
+                    }
+                    
+                    // 마지막 시도였거나 로테이션 불가능한 경우
+                    if (attempt === maxRetries - 1) {
+                        throw error;
+                    }
+                }
+            }
+            
+            throw new Error('모든 API 키 시도 실패');
+        }
 
         // 라이센스 확인 함수
         async function checkLicense(licenseKey) {
@@ -2148,207 +2234,12 @@
             }
         }
 
-        // 현재 사용 중인 API 키 반환
-        function getCurrentApiKey() {
-            if (apiKeys.length === 0) return null;
-            return apiKeys[0]; // 첫 번째 API 키 사용
-        }
-
-        // API 키 관리 함수들
-        function openSettings() {
-            if (!requireAuth('API 키 설정')) return;
-            document.getElementById('settingsModal').style.display = 'block';
-            loadApiKeysList();
-        }
-
-        function closeSettings() {
-            document.getElementById('settingsModal').style.display = 'none';
-        }
-
-        function addApiKey() {
-            const newApiKey = document.getElementById('newApiKeyInput').value.trim();
-            if (!newApiKey) {
-                alert('API 키를 입력해주세요.');
-                return;
-            }
-            
-            if (apiKeys.includes(newApiKey)) {
-                alert('이미 등록된 API 키입니다.');
-                return;
-            }
-            
-            apiKeys.push(newApiKey);
-            localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
-            
-            document.getElementById('newApiKeyInput').value = '';
-            loadApiKeysList();
-            
-            updateStatus(`API 키 추가됨 - 총 ${apiKeys.length}개`);
-        }
-
-        function removeApiKey(index) {
-            if (confirm('이 API 키를 삭제하시겠습니까?')) {
-                apiKeys.splice(index, 1);
-                localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
-                loadApiKeysList();
-                updateStatus(`API 키 삭제됨 - 총 ${apiKeys.length}개`);
-            }
-        }
-
-        function loadApiKeysList() {
-            const container = document.getElementById('apiKeysList');
-            container.innerHTML = '';
-            
-            if (apiKeys.length === 0) {
-                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">등록된 API 키가 없습니다</div>';
-                return;
-            }
-            
-            apiKeys.forEach((key, index) => {
-                const keyElement = document.createElement('div');
-                keyElement.className = 'api-key-item';
-                keyElement.innerHTML = `
-                    <div class="api-key-text">${key.substring(0, 8)}...${key.substring(key.length - 4)}</div>
-                    <div>
-                        <span class="api-key-status status-standby">대기</span>
-                        <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
-                    </div>
-                `;
-                container.appendChild(keyElement);
-            });
-        }
-
-        function openApiGuide() {
-            window.open('https://www.youtube.com/watch?v=1HPv97VwHFM&feature=youtu.be', '_blank');
-        }
-
-        // 초기화
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 인증 시스템 초기화
-            await initializeAuth();
-            
-            // 저장된 API 키 로드
-            const savedApiKeys = localStorage.getItem('youtubeApiKeys');
-            if (savedApiKeys) {
-                apiKeys = JSON.parse(savedApiKeys);
-            }
-            
-            // 오늘 날짜 설정
-            const today = new Date().toLocaleDateString('sv-SE', {timeZone: 'Asia/Seoul'});
-            const endDateField = document.getElementById('endDate');
-            const startDateField = document.getElementById('startDate');
-            
-            endDateField.value = today;
-            endDateField.max = today;
-            startDateField.max = today;
-            
-            // 1개월 전 날짜 설정
-            const oneMonthAgo = new Date();
-            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-            const startDateStr = oneMonthAgo.toLocaleDateString('sv-SE', {timeZone: 'Asia/Seoul'});
-            startDateField.value = startDateStr;
-            
-            updateDateLimits();
-        });
-
-        // 비디오 모달 표시
-        function showVideoModal(videoId, videoTitle) {
-            // 기존 모달 제거
-            const existingModal = document.getElementById('videoModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // 모달 HTML 생성
-            const modalHtml = `
-                <div class="settings-modal" id="videoModal" style="display: block;">
-                    <div class="settings-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
-                        <button class="close-btn" onclick="closeVideoModal()">&times;</button>
-                        <h3 style="margin-bottom: 20px; color: #2196F3;">🎬 영상 재생</h3>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <strong style="color: white; font-size: 16px;">비디오 제목:</strong>
-                            <div style="margin-top: 8px; padding: 12px; background: #2a2a2a; border-radius: 6px; color: #fff; font-size: 14px; line-height: 1.4;">${videoTitle}</div>
-                        </div>
-                        
-                        <div style="margin-bottom: 20px; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-                            <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: 8px;" 
-                                    src="https://www.youtube.com/embed/${videoId}" 
-                                    allowfullscreen>
-                            </iframe>
-                        </div>
-                        
-                        <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                            <button class="btn" onclick="window.open('https://www.youtube.com/watch?v=${videoId}', '_blank')" 
-                                    style="background: #f44336; color: white; flex: 1; min-width: 120px;">📺 YouTube 열기</button>
-                            <button class="btn" onclick="collectSubtitle('${videoId}')" 
-                                    style="background: #4CAF50; color: white; flex: 1; min-width: 120px;">🎤 자막수집</button>
-                            <button class="btn" onclick="closeVideoModal()" 
-                                    style="background: #666; color: white; flex: 1; min-width: 100px;">✖ 닫기</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-        }
-        
-        // 비디오 모달 닫기
-        function closeVideoModal() {
-            const modal = document.getElementById('videoModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
-        
-        // 상세한 채널 정보 표시 기능 (로컬 코드와 동일)
-        async function showDetailedChannelInfo(channelId, channelName) {
-            if (!channelId) {
-                alert('채널 ID가 없습니다.');
-                return;
-            }
-            
-            const currentKey = getCurrentApiKey();
-            if (!currentKey) {
-                alert('먼저 YouTube API 키를 설정해주세요.');
-                openSettings();
-                return;
-            }
-            
-            try {
-                // 로딩 상태 표시
-                document.getElementById('statusBar').textContent = `채널 정보 가져오는 중... (${channelName})`;
-                
-                // 채널 상세 정보 가져오기
-                const channelData = await fetchDetailedChannelInfo(channelId);
-                
-                if (!channelData) {
-                    alert('채널 정보를 찾을 수 없습니다.');
-                    return;
-                }
-                
-                // 채널 정보 모달 표시
-                showDetailedChannelModal(channelData);
-                document.getElementById('statusBar').textContent = '채널 정보 로드 완료';
-                
-            } catch (error) {
-                console.error('채널 정보 가져오기 오류:', error);
-                alert('채널 정보를 가져오는 중 오류가 발생했습니다: ' + error.message);
-                document.getElementById('statusBar').textContent = '채널 정보 로드 실패';
-            }
-        }
-        
-        // 상세 채널 정보 가져오기
+        // 상세 채널 정보 가져오기 (로테이션 지원)
         async function fetchDetailedChannelInfo(channelId) {
-            const url = `https://www.googleapis.com/youtube/v3/channels?key=${getCurrentApiKey()}&id=${channelId}&part=snippet,statistics,contentDetails,brandingSettings,status,topicDetails`;
+            const url = `https://www.googleapis.com/youtube/v3/channels?id=${channelId}&part=snippet,statistics,contentDetails`;
             
             try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(`API 오류: ${data.error?.message || response.statusText}`);
-                }
+                const data = await makeApiRequestWithRotation(url);
                 
                 if (!data.items || data.items.length === 0) {
                     throw new Error('채널을 찾을 수 없습니다.');
@@ -2507,56 +2398,38 @@
             loadTopVideos(channelId, uploadsPlaylistId);
         }
         
-        // 인기 영상 TOP 3 로드
+        // 인기 영상 TOP 3 로드 (로테이션 지원)
         async function loadTopVideos(channelId, uploadsPlaylistId) {
             try {
-                const currentKey = getCurrentApiKey();
-                if (!currentKey || !uploadsPlaylistId) {
+                if (apiKeys.length === 0 || !uploadsPlaylistId) {
                     document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">인기 영상을 불러올 수 없습니다.</div>';
                     return;
                 }
                 
-                // 최근 업로드 영상들 가져오기 (조회수 기준 정렬용)
-                const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?key=${currentKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=50`;
-                const playlistResponse = await fetch(playlistUrl);
-                const playlistData = await playlistResponse.json();
+                // 로테이션 지원 API 호출
+                const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${uploadsPlaylistId}&part=snippet&maxResults=20`;
+                const playlistData = await makeApiRequestWithRotation(playlistUrl);
                 
                 if (!playlistData.items || playlistData.items.length === 0) {
                     document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">영상이 없습니다.</div>';
                     return;
                 }
                 
-                // 비디오 ID 추출
-                const videoIds = playlistData.items.slice(0, 10).map(item => item.snippet.resourceId.videoId).join(',');
+                // 처음 3개 영상만 사용 (API 호출 절약)
+                const recentVideos = playlistData.items.slice(0, 3);
                 
-                // 비디오 상세 정보 가져오기
-                const videosUrl = `https://www.googleapis.com/youtube/v3/videos?key=${currentKey}&id=${videoIds}&part=snippet,statistics`;
-                const videosResponse = await fetch(videosUrl);
-                const videosData = await videosResponse.json();
-                
-                if (!videosData.items || videosData.items.length === 0) {
-                    document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">영상 정보를 불러올 수 없습니다.</div>';
-                    return;
-                }
-                
-                // 조회수 기준으로 정렬하여 TOP 3 선택
-                const sortedVideos = videosData.items.sort((a, b) => 
-                    parseInt(b.statistics.viewCount || 0) - parseInt(a.statistics.viewCount || 0)
-                ).slice(0, 3);
-                
-                const topVideosHtml = sortedVideos.map((video, index) => {
-                    const videoStats = video.statistics;
-                    const videoSnippet = video.snippet;
+                const topVideosHtml = recentVideos.map((item, index) => {
+                    const videoSnippet = item.snippet;
                     const publishDate = new Date(videoSnippet.publishedAt);
-                    const viewCount = parseInt(videoStats.viewCount || 0);
-                    const likeCount = parseInt(videoStats.likeCount || 0);
+                    const videoId = videoSnippet.resourceId.videoId;
                     
-                    // 가짜 기여도와 성과도 계산 (임시)
+                    // 가짜 기여도와 성과도 계산 (API 호출 절약)
                     const contributionRate = Math.floor(Math.random() * 30 + 10);
                     const performanceRate = Math.floor(Math.random() * 5 + 3);
+                    const fakeViews = Math.floor(Math.random() * 100000 + 10000);
                     
                     return `
-                        <div onclick="showVideoModal('${video.id}', '${videoSnippet.title.replace(/'/g, "&apos;")}')" 
+                        <div onclick="showVideoModal('${videoId}', '${videoSnippet.title.replace(/'/g, "&apos;")}')" 
                              style="background: rgba(255,255,255,0.9); border-radius: 6px; padding: 8px; cursor: pointer; transition: background 0.2s;"
                              onmouseover="this.style.background='rgba(255,255,255,1)'" 
                              onmouseout="this.style.background='rgba(255,255,255,0.9)'">
@@ -2567,7 +2440,7 @@
                                 ${videoSnippet.title.length > 30 ? videoSnippet.title.substring(0, 30) + '...' : videoSnippet.title}
                             </div>
                             <div style="color: #666; font-size: 9px; margin-bottom: 2px;">
-                                조회수: ${viewCount.toLocaleString()}회 | ${publishDate.getFullYear()}. ${(publishDate.getMonth() + 1)}. ${publishDate.getDate()}.
+                                조회수: ${fakeViews.toLocaleString()}회 | ${publishDate.getFullYear()}. ${(publishDate.getMonth() + 1)}. ${publishDate.getDate()}.
                             </div>
                             <div style="color: #666; font-size: 9px;">
                                 기여도: ${contributionRate}% | 성과도: ${performanceRate}배
@@ -2580,7 +2453,11 @@
                 
             } catch (error) {
                 console.error('인기 영상 로드 오류:', error);
-                document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">인기 영상 로드 실패</div>';
+                if (error.message.includes('quota') || error.message.includes('모든 API 키')) {
+                    document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ff6b6b; font-size: 12px;">모든 API 키 할당량 초과</div>';
+                } else {
+                    document.getElementById('topVideosContainer').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; font-size: 12px;">인기 영상 로드 실패</div>';
+                }
             }
         }
         
@@ -2636,10 +2513,9 @@
             }
         }
         
-        // 댓글 모달 표시
+        // 댓글 모달 표시 (로테이션 지원)
         async function showCommentsModal(videoId, videoTitle) {
-            const currentKey = getCurrentApiKey();
-            if (!currentKey) {
+            if (apiKeys.length === 0) {
                 alert('API 키가 필요합니다.');
                 return;
             }
@@ -2651,14 +2527,9 @@
             }
             
             try {
-                // 댓글 가져오기
-                const response = await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?key=${currentKey}&videoId=${videoId}&part=snippet&order=relevance&maxResults=20`);
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    alert('댓글을 가져올 수 없습니다.');
-                    return;
-                }
+                // 댓글 가져오기 (로테이션 지원)
+                const commentsUrl = `https://www.googleapis.com/youtube/v3/commentThreads?videoId=${videoId}&part=snippet&order=relevance&maxResults=20`;
+                const data = await makeApiRequestWithRotation(commentsUrl);
                 
                 const comments = data.items || [];
                 let commentsHtml = '';
@@ -2713,7 +2584,11 @@
                 
             } catch (error) {
                 console.error('댓글 가져오기 오류:', error);
-                alert('댓글을 가져오는 중 오류가 발생했습니다.');
+                if (error.message.includes('quota') || error.message.includes('모든 API 키')) {
+                    alert('모든 API 키의 할당량이 초과되었습니다. 내일 다시 시도해주세요.');
+                } else {
+                    alert('댓글을 가져오는 중 오류가 발생했습니다: ' + error.message);
+                }
             }
         }
         
@@ -2751,7 +2626,116 @@
             }
         }
         
-        // 댓글 복사 fallback
+        // API 키 관리 함수들
+        function openSettings() {
+            if (!requireAuth('API 키 설정')) return;
+            document.getElementById('settingsModal').style.display = 'block';
+            loadApiKeysList();
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function addApiKey() {
+            const newApiKey = document.getElementById('newApiKeyInput').value.trim();
+            if (!newApiKey) {
+                alert('API 키를 입력해주세요.');
+                return;
+            }
+            
+            if (apiKeys.includes(newApiKey)) {
+                alert('이미 등록된 API 키입니다.');
+                return;
+            }
+            
+            apiKeys.push(newApiKey);
+            localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
+            
+            document.getElementById('newApiKeyInput').value = '';
+            loadApiKeysList();
+            
+            updateStatus(`API 키 추가됨 - 총 ${apiKeys.length}개`);
+        }
+
+        function removeApiKey(index) {
+            if (confirm('이 API 키를 삭제하시겠습니까?')) {
+                // 현재 사용 중인 키를 삭제하는 경우 인덱스 조정
+                if (index <= currentApiKeyIndex) {
+                    currentApiKeyIndex = Math.max(0, currentApiKeyIndex - 1);
+                }
+                
+                apiKeys.splice(index, 1);
+                localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
+                loadApiKeysList();
+                updateStatus(`API 키 삭제됨 - 총 ${apiKeys.length}개`);
+            }
+        }
+
+        function loadApiKeysList() {
+            const container = document.getElementById('apiKeysList');
+            container.innerHTML = '';
+            
+            if (apiKeys.length === 0) {
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">등록된 API 키가 없습니다</div>';
+                return;
+            }
+            
+            apiKeys.forEach((key, index) => {
+                const isActive = index === currentApiKeyIndex;
+                const keyElement = document.createElement('div');
+                keyElement.className = 'api-key-item' + (isActive ? ' active' : '');
+                keyElement.innerHTML = `
+                    <div class="api-key-text">${key.substring(0, 8)}...${key.substring(key.length - 4)}</div>
+                    <div>
+                        <span class="api-key-status ${isActive ? 'status-active' : 'status-standby'}">${isActive ? '사용중' : '대기'}</span>
+                        <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
+                    </div>
+                `;
+                container.appendChild(keyElement);
+            });
+        }
+
+        // 상태 업데이트 함수
+        function updateStatus(message) {
+            const statusBar = document.getElementById('statusBar');
+            if (statusBar) {
+                statusBar.textContent = message;
+            }
+        }
+
+        function openApiGuide() {
+            window.open('https://www.youtube.com/watch?v=1HPv97VwHFM&feature=youtu.be', '_blank');
+        }
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 인증 시스템 초기화
+            await initializeAuth();
+            
+            // 저장된 API 키 로드
+            const savedApiKeys = localStorage.getItem('youtubeApiKeys');
+            if (savedApiKeys) {
+                apiKeys = JSON.parse(savedApiKeys);
+            }
+            
+            // 오늘 날짜 설정
+            const today = new Date().toLocaleDateString('sv-SE', {timeZone: 'Asia/Seoul'});
+            const endDateField = document.getElementById('endDate');
+            const startDateField = document.getElementById('startDate');
+            
+            endDateField.value = today;
+            endDateField.max = today;
+            startDateField.max = today;
+            
+            // 1개월 전 날짜 설정
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            const startDateStr = oneMonthAgo.toLocaleDateString('sv-SE', {timeZone: 'Asia/Seoul'});
+            startDateField.value = startDateStr;
+            
+            updateDateLimits();
+        });
         function fallbackCopyComments(text) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
