@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -360,8 +361,8 @@
         }
 
         .url-input {
-            width: 400px;
-            max-width: 400px;
+            flex: 1;
+            min-width: 300px;
             padding: 8px;
             background: #1a1a1a;
             border: 1px solid #555;
@@ -2898,9 +2899,15 @@
             
             // 최종 텍스트 정리
             let finalText = originalDescription
-                .replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]+/g, ' ')
-                .replace(/^\s+|\s+$/g, '')
-                .replace(/\s+/g, ' ');
+                .replace(/&nbsp;/g, ' ')         // HTML 엔티티 제거
+                .replace(/&amp;/g, '&')          // &amp; 엔티티 제거
+                .replace(/&lt;/g, '<')           // &lt; 엔티티 제거
+                .replace(/&gt;/g, '>')           // &gt; 엔티티 제거
+                .replace(/&quot;/g, '"')         // &quot; 엔티티 제거
+                .replace(/\r\n/g, '\n')          // Windows 줄바꿈을 Unix 형식으로 통일
+                .replace(/\r/g, '\n')            // Mac 줄바꿈을 Unix 형식으로 통일
+                .replace(/ +/g, ' ')             // 연속된 공백을 하나로 줄임 (줄바꿈은 보존)
+                .replace(/^\s+|\s+$/g, '')       // 앞뒤 공백만 제거
             
             // 모달 생성
             const modal = document.createElement('div');
@@ -2976,7 +2983,7 @@
                     font-size: 14px;
                     line-height: 1.5;
                     word-wrap: break-word;
-                    white-space: normal;
+                    white-space: pre-wrap;
                     margin: 0;
                 `;
                 textBox.textContent = finalText;
