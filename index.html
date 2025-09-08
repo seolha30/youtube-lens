@@ -3076,6 +3076,8 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // 인증 시스템 초기화
             await initializeAuth();
+            // 번역 기능 핸들러 설정
+            setupRegionChangeHandler();
             
             // 저장된 API 키 로드
             const savedApiKeys = localStorage.getItem('youtubeApiKeys');
