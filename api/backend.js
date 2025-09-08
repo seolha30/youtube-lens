@@ -21,11 +21,7 @@ export default async function handler(req, res) {
         let currentApiIndex = 0;
         const { action } = req.method === 'GET' ? req.query : req.body;
         // 프론트엔드에서 전달받은 현재 API 키 인덱스 사용
-        if (typeof req.body.currentApiKeyIndex === 'number' && 
-            req.body.currentApiKeyIndex >= 0 && 
-            req.body.currentApiKeyIndex < (req.body.apiKeys?.length || 0)) {
-            currentApiIndex = req.body.currentApiKeyIndex;
-        }
+        
         
         switch (action) {
             case 'search':
@@ -99,7 +95,7 @@ async function handleSearch(req, res) {
             success: true,
             data: results,
             message: `검색 완료 - ${results.length}개 결과`,
-            currentApiKeyIndex: currentApiIndex  // 현재 API 키 인덱스 추가
+            currentApiKeyIndex: 0
         });
     } catch (error) {
         console.error('검색 오류:', error);
@@ -137,7 +133,7 @@ async function handleAnalyze(req, res) {
             success: true,
             data: [result],
             message: 'URL 분석 완료',
-            currentApiKeyIndex: currentApiIndex
+            currentApiKeyIndex: 0
         });
     } catch (error) {
         console.error('URL 분석 오류:', error);
