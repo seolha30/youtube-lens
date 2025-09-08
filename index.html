@@ -681,6 +681,36 @@
             background: #d32f2f;
         }
 
+        .api-key-buttons {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .api-key-use {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .api-key-use:hover {
+            background: #43a047;
+        }
+
+        .api-key-status {
+            font-size: 10px;
+            margin: 0 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 40px;
+            text-align: center;
+        }
+
         /* 게이지 바 스타일 */
         .gauge-container {
             position: relative;
@@ -2009,12 +2039,25 @@
                     <div class="api-key-item ${isActive ? 'active' : ''}">
                         <span class="api-key-text">${maskedKey}</span>
                         <span class="api-key-status ${isActive ? 'status-active' : 'status-standby'}">
-                            ${isActive ? '사용중' : '대기중'}
+                            ${isActive ? '활성' : '대기'}
                         </span>
-                        <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
+                        <div class="api-key-buttons">
+                            ${!isActive ? `<button class="api-key-use" onclick="setActiveApiKey(${index})">기본 사용</button>` : ''}
+                            <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
+                        </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // API 키 활성화 함수 추가
+        function setActiveApiKey(index) {
+            if (index >= 0 && index < apiKeys.length) {
+                currentApiKeyIndex = index;
+                localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
+                updateApiKeysList();
+                console.log(`API 키 ${index + 1}번이 활성화되었습니다.`);
+            }
         }
         
         function openSettings() {
