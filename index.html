@@ -2220,8 +2220,6 @@
                         apiKeys: apiKeys
                     };
                     
-                    console.log('프론트엔드에서 보내는 데이터:', searchParams);
-                    
                     const result = await callBackendAPI('search', searchParams);
                     
                     originalResults = result.data;
@@ -2236,24 +2234,16 @@
                     
                     const regionCode = document.getElementById('regionCode').value;
                     
-                    console.log('채널 검색 요청 시작:', keyword, regionCode);
-                    
                     const result = await callBackendAPI('channelSearch', {
                         channelName: keyword,
                         regionCode: regionCode,
                         apiKeys: apiKeys
                     });
                     
-                    // 디버깅: 실제 응답 데이터 확인
-                    console.log('채널 검색 응답 전체:', result);
-                    console.log('result.data:', result.data);
-                    console.log('result.data 타입:', typeof result.data);
-                    
                     if (result.data && result.data.length > 0) {
                         showChannelSelectionDialog(result.data, keyword);
                         updateStatus(`채널 검색 완료 - ${result.data.length}개 채널 발견`);
                     } else {
-                        console.log('채널 검색 결과 없음 또는 데이터 구조 문제');
                         alert('검색된 채널이 없습니다.');
                         updateStatus('채널 검색 결과 없음');
                         showLoading(false);
@@ -2268,107 +2258,102 @@
             }
         }
 
+        // 채널 선택 다이얼로그 표시 함수
         function showChannelSelectionDialog(channels, searchKeyword) {
-        // 기존 모달 제거
-        const existingModal = document.getElementById('channelSelectionModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        showLoading(false);
-        
-        // 정확 일치와 부분 일치 채널 분리 (튜브렌즈33와 동일)
-        const exactMatchChannels = channels.filter(ch => ch.isExactMatch);
-        const partialMatchChannels = channels.filter(ch => !ch.isExactMatch);
-        const sortedChannels = [...exactMatchChannels, ...partialMatchChannels];
-        
-        // 채널 목록 HTML 생성
-        const channelsHtml = sortedChannels.map((channel, index) => {
-            const exactText = channel.isExactMatch ? ' (정확일치)' : '';
-            return `
-                <div class="channel-item" onclick="selectChannelForVideoCollection('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})" 
-                    style="display: flex; align-items: center; padding: 15px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s;">
-                    
-                    <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
-                        style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-right: 15px;"
-                        onerror="this.style.display='none'">
-                    
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold; font-size: 16px; color: #333; margin-bottom: 5px;">
-                            ${channel.title}${exactText}
+            // 기존 모달 제거
+            const existingModal = document.getElementById('channelSelectionModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            showLoading(false);
+            
+            // 정확 일치와 부분 일치 채널 분리
+            const exactMatchChannels = channels.filter(ch => ch.isExactMatch);
+            const partialMatchChannels = channels.filter(ch => !ch.isExactMatch);
+            const sortedChannels = [...exactMatchChannels, ...partialMatchChannels];
+            
+            // 채널 목록 HTML 생성
+            const channelsHtml = sortedChannels.map((channel, index) => {
+                const exactText = channel.isExactMatch ? ' (정확일치)' : '';
+                return `
+                    <div class="channel-item" onclick="selectChannelForVideoCollection('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})" 
+                        style="display: flex; align-items: center; padding: 15px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s;">
+                        
+                        <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
+                            style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-right: 15px;"
+                            onerror="this.style.display='none'">
+                        
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; font-size: 16px; color: #333; margin-bottom: 5px;">
+                                ${channel.title}${exactText}
+                            </div>
+                            <div style="font-size: 13px; color: #666; margin-bottom: 3px;">
+                                구독자: ${channel.subscriberCount.toLocaleString()}명
+                            </div>
+                            <div style="font-size: 13px; color: #666;">
+                                총 영상: ${channel.videoCount.toLocaleString()}개
+                            </div>
                         </div>
-                        <div style="font-size: 13px; color: #666; margin-bottom: 3px;">
-                            구독자: ${channel.subscriberCount.toLocaleString()}명
-                        </div>
-                        <div style="font-size: 13px; color: #666;">
-                            총 영상: ${channel.videoCount.toLocaleString()}개
+                        
+                        <div style="text-align: center; padding: 0 15px;">
+                            <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                                영상수집
+                            </div>
                         </div>
                     </div>
-                    
-                    <div style="text-align: center; padding: 0 15px;">
-                        <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">
-                            영상수집
+                `;
+            }).join('');
+            
+            const modalHtml = `
+                <div class="settings-modal" id="channelSelectionModal" style="display: block;">
+                    <div class="settings-content" style="max-width: 700px; max-height: 85vh; overflow: hidden; background: #f5f5f5;">
+                        <button class="close-btn" onclick="closeChannelSelectionModal()">&times;</button>
+                        <h3 style="margin-bottom: 20px; color: #1976d2; text-align: center;">🔍 채널 선택</h3>
+                        
+                        <div style="margin-bottom: 15px; text-align: center;">
+                            <div style="background: rgba(25, 118, 210, 0.1); padding: 10px 20px; border-radius: 25px; display: inline-block;">
+                                <span style="color: #1976d2; font-weight: bold;">검색어: "${searchKeyword}"</span>
+                                <span style="color: #666; margin-left: 15px;">총 ${channels.length}개 채널</span>
+                            </div>
+                        </div>
+                        
+                        <div style="max-height: 450px; overflow-y: auto; padding: 0 10px;">
+                            ${channelsHtml}
+                        </div>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button onclick="closeChannelSelectionModal()" 
+                                    style="background: #666; color: white; border: none; border-radius: 5px; padding: 12px 25px; font-weight: bold; cursor: pointer;">
+                                취소
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
-        
-        const modalHtml = `
-            <div class="settings-modal" id="channelSelectionModal" style="display: block;">
-                <div class="settings-content" style="max-width: 700px; max-height: 85vh; overflow: hidden; background: #f5f5f5;">
-                    <button class="close-btn" onclick="closeChannelSelectionModal()">&times;</button>
-                    <h3 style="margin-bottom: 20px; color: #1976d2; text-align: center;">🔍 채널 선택</h3>
-                    
-                    <div style="margin-bottom: 15px; text-align: center;">
-                        <div style="background: rgba(25, 118, 210, 0.1); padding: 10px 20px; border-radius: 25px; display: inline-block;">
-                            <span style="color: #1976d2; font-weight: bold;">검색어: "${searchKeyword}"</span>
-                            <span style="color: #666; margin-left: 15px;">총 ${channels.length}개 채널</span>
-                        </div>
-                    </div>
-                    
-                    <div style="max-height: 450px; overflow-y: auto; padding: 0 10px;">
-                        ${channelsHtml}
-                    </div>
-                    
-                    <div style="margin-top: 20px; text-align: center;">
-                        <button onclick="closeChannelSelectionModal()" 
-                                style="background: #666; color: white; border: none; border-radius: 5px; padding: 12px 25px; font-weight: bold; cursor: pointer;">
-                            취소
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        // 채널 아이템 호버 효과
-        const channelItems = document.querySelectorAll('.channel-item');
-        channelItems.forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = '#e3f2fd';
-                this.style.borderColor = '#2196F3';
-                this.style.transform = 'translateY(-2px)';
-                this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-            });
             
-            item.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '#f8f9fa';
-                this.style.borderColor = '#ddd';
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = 'none';
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // 채널 아이템 호버 효과
+            const channelItems = document.querySelectorAll('.channel-item');
+            channelItems.forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#e3f2fd';
+                    this.style.borderColor = '#2196F3';
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '#f8f9fa';
+                    this.style.borderColor = '#ddd';
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = 'none';
+                });
             });
-        });
-        
-        // 외부 클릭 시 닫기
-        document.getElementById('channelSelectionModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeChannelSelectionModal();
-            }
-        });
-    }
+        }
 
+        // 채널 선택 후 영상 수집 함수
         async function selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount) {
             try {
                 // 모달 닫기
@@ -2409,6 +2394,7 @@
             }
         }
 
+        // 채널 선택 모달 닫기 함수
         function closeChannelSelectionModal() {
             const modal = document.getElementById('channelSelectionModal');
             if (modal) {
