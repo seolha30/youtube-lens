@@ -461,12 +461,12 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
 
     const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
 
-    // 비디오 상세 정보 가져오기 (test.html과 동일)
+    // 비디오 상세 정보 가져오기 (라이센스 정보 포함)
     const videoIds = searchData.items.map(item => item.id.videoId).join(',');
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
         `key=APIKEY_PLACEHOLDER&` +
         `id=${videoIds}&` +
-        `part=snippet,statistics,contentDetails`;
+        `part=snippet,statistics,contentDetails,status`;
 
     const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
 
@@ -610,11 +610,11 @@ async function fetchSingleVideoData(videoId, apiKeys) {
     }
     
     try {
-        // 1. 비디오 상세 정보 가져오기 (test.html과 동일)
+        // 1. 비디오 상세 정보 가져오기 (라이센스 정보 포함)
         const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
-            `key=APIKEY_PLACEHOLDER&` +
-            `id=${videoId}&` +
-            `part=snippet,statistics,contentDetails`;
+        `key=APIKEY_PLACEHOLDER&` +
+        `id=${videoId}&` +
+        `part=snippet,statistics,contentDetails,status`;
         
         const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
         
@@ -1080,12 +1080,12 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         return [];
     }
     
-    // 비디오 상세 정보 가져오기
+    // 비디오 상세 정보 가져오기 (라이센스 정보 포함)
     const videoIds = videos.map(item => item.snippet.resourceId.videoId).join(',');
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
         `key=APIKEY_PLACEHOLDER&` +
         `id=${videoIds}&` +
-        `part=snippet,statistics,contentDetails`;
+        `part=snippet,statistics,contentDetails,status`;
     
     const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
     const videoDetails = videosData.items || [];
