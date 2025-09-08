@@ -18,10 +18,8 @@ export default async function handler(req, res) {
     }
     
     try {
-        let currentApiIndex = 0;
-        const { action } = req.method === 'GET' ? req.query : req.body;
-        // 프론트엔드에서 전달받은 현재 API 키 인덱스 사용
-        
+        const { action, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
+        let currentApiIndex = parseInt(currentApiKeyIndex) || 0;
         
         switch (action) {
             case 'search':
@@ -66,7 +64,8 @@ async function handleSearch(req, res) {
         isAllVideos, 
         isVideoSearch,
         startDate, 
-        endDate 
+        endDate,
+        currentApiKeyIndex
     } = data;
     
     console.log('🔍 검색 요청:', { keyword, maxResults, timeFrame, regionCode, isViewsSort });
@@ -88,14 +87,15 @@ async function handleSearch(req, res) {
             isAllVideos: isAllVideos !== 'false',
             isVideoSearch: isVideoSearch !== 'false',
             startDate,
-            endDate
+            endDate,
+            currentApiKeyIndex: parseInt(currentApiKeyIndex) || 0
         }, apiKeys);
         
         res.status(200).json({
             success: true,
             data: results,
             message: `검색 완료 - ${results.length}개 결과`,
-            currentApiKeyIndex: 0
+            currentApiKeyIndex: results.currentApiKeyIndex || 0
         });
     } catch (error) {
         console.error('검색 오류:', error);
@@ -107,9 +107,10 @@ async function handleSearch(req, res) {
     }
 }
 
+
 // URL 분석 처리 함수 (test.html의 analyzeYouTubeUrl + fetchSingleVideoData 완전 포팅)
 async function handleAnalyze(req, res) {
-    const { url, apiKeys } = req.method === 'GET' ? req.query : req.body;
+    const { url, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -124,16 +125,16 @@ async function handleAnalyze(req, res) {
             throw new Error('올바른 YouTube URL을 입력해주세요.');
         }
         
-        const result = await fetchSingleVideoData(videoId, apiKeys);
+        const result = await fetchSingleVideoData(videoId, apiKeys, parseInt(currentApiKeyIndex) || 0);
         if (!result) {
             throw new Error('비디오 정보를 찾을 수 없습니다.');
         }
         
         res.status(200).json({
             success: true,
-            data: [result],
+            data: [result.data],
             message: 'URL 분석 완료',
-            currentApiKeyIndex: 0
+            currentApiKeyIndex: result.currentApiKeyIndex || 0
         });
     } catch (error) {
         console.error('URL 분석 오류:', error);
@@ -144,6 +145,7 @@ async function handleAnalyze(req, res) {
         });
     }
 }
+
 
 // 필터 처리 함수 (test.html의 applyFilters 완전 포팅)
 async function handleFilter(req, res) {
@@ -191,7 +193,7 @@ async function handleTranslate(req, res) {
 
 // 채널 정보 처리 함수 (test.html의 fetchDetailedChannelInfo 완전 포팅)
 async function handleChannelInfo(req, res) {
-    const { channelId, apiKeys } = req.method === 'GET' ? req.query : req.body;
+    const { channelId, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -201,12 +203,13 @@ async function handleChannelInfo(req, res) {
     }
     
     try {
-        const channelData = await fetchDetailedChannelInfo(channelId, apiKeys);
+        const result = await fetchDetailedChannelInfo(channelId, apiKeys, parseInt(currentApiKeyIndex) || 0);
         
         res.status(200).json({
             success: true,
-            data: channelData,
-            message: '채널 정보 가져오기 완료'
+            data: result.data,
+            message: '채널 정보 가져오기 완료',
+            currentApiKeyIndex: result.currentApiKeyIndex || 0
         });
     } catch (error) {
         console.error('채널 정보 오류:', error);
@@ -218,9 +221,10 @@ async function handleChannelInfo(req, res) {
     }
 }
 
+
 // 채널 영상 수집 처리 함수 (test.html의 fetchChannelVideos 완전 포팅)
 async function handleChannelVideos(req, res) {
-    const { channelId, uploadPlaylist, maxResults, apiKeys } = req.method === 'GET' ? req.query : req.body;
+    const { channelId, uploadPlaylist, maxResults, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -230,12 +234,13 @@ async function handleChannelVideos(req, res) {
     }
     
     try {
-        const videos = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults) || 50, apiKeys);
+        const result = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults) || 50, apiKeys, parseInt(currentApiKeyIndex) || 0);
         
         res.status(200).json({
             success: true,
-            data: videos,
-            message: `채널 영상 수집 완료 - ${videos.length}개 결과`
+            data: result.data,
+            message: `채널 영상 수집 완료 - ${result.data.length}개 결과`,
+            currentApiKeyIndex: result.currentApiKeyIndex || 0
         });
     } catch (error) {
         console.error('채널 영상 수집 오류:', error);
@@ -247,9 +252,10 @@ async function handleChannelVideos(req, res) {
     }
 }
 
+
 // 채널 검색 처리 함수 (test.html의 searchChannelByName 완전 포팅)
 async function handleChannelSearch(req, res) {
-    const { channelName, regionCode, apiKeys } = req.method === 'GET' ? req.query : req.body;
+    const { channelName, regionCode, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -259,12 +265,13 @@ async function handleChannelSearch(req, res) {
     }
     
     try {
-        const channels = await searchChannelByName(channelName, regionCode || 'KR', apiKeys);
+        const result = await searchChannelByName(channelName, regionCode || 'KR', apiKeys, parseInt(currentApiKeyIndex) || 0);
         
         res.status(200).json({
             success: true,
-            data: channels,
-            message: `채널 검색 완료 - ${channels.length}개 결과`
+            data: result.data,
+            message: `채널 검색 완료 - ${result.data.length}개 결과`,
+            currentApiKeyIndex: result.currentApiKeyIndex || 0
         });
     } catch (error) {
         console.error('채널 검색 오류:', error);
@@ -275,6 +282,7 @@ async function handleChannelSearch(req, res) {
         });
     }
 }
+
 
 // YouTube 검색 메인 함수 (test.html의 searchYouTubeVideos 완전 포팅)
 async function searchYouTubeVideos(searchParams, apiKeys) {
