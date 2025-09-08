@@ -461,12 +461,12 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
 
     const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
 
-    // 비디오 상세 정보 가져오기 (라이센스 정보 포함)
+    // 비디오 상세 정보 가져오기 (test.html과 동일)
     const videoIds = searchData.items.map(item => item.id.videoId).join(',');
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
         `key=APIKEY_PLACEHOLDER&` +
         `id=${videoIds}&` +
-        `part=snippet,statistics,contentDetails,status`;
+        `part=snippet,statistics,contentDetails`;
 
     const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
 
@@ -610,11 +610,11 @@ async function fetchSingleVideoData(videoId, apiKeys) {
     }
     
     try {
-        // 1. 비디오 상세 정보 가져오기 (라이센스 정보 포함)
+        // 1. 비디오 상세 정보 가져오기 (test.html과 동일)
         const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `id=${videoId}&` +
-        `part=snippet,statistics,contentDetails,status`;
+            `key=APIKEY_PLACEHOLDER&` +
+            `id=${videoId}&` +
+            `part=snippet,statistics,contentDetails`;
         
         const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
         
@@ -1080,12 +1080,12 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         return [];
     }
     
-    // 비디오 상세 정보 가져오기 (라이센스 정보 포함)
+    // 비디오 상세 정보 가져오기
     const videoIds = videos.map(item => item.snippet.resourceId.videoId).join(',');
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
         `key=APIKEY_PLACEHOLDER&` +
         `id=${videoIds}&` +
-        `part=snippet,statistics,contentDetails,status`;
+        `part=snippet,statistics,contentDetails`;
     
     const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
     const videoDetails = videosData.items || [];
@@ -1220,12 +1220,158 @@ async function searchChannelByName(channelName, regionCode, apiKeys) {
         `maxResults=50&` +
         `regionCode=${regionCode}`;
     
-    const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
-    const channels = searchData.items || [];
-    
-    if (channels.length === 0) {
-        return [];
-    }
+        async function searchChannelByName(channelName, regionCode, apiKeys) {
+            let currentApiIndex = 0;
+            
+            function getCurrentApiKey() {
+                if (!apiKeys || apiKeys.length === 0) return null;
+                if (currentApiIndex >= apiKeys.length) currentApiIndex = 0;
+                return apiKeys[currentApiIndex];
+            }
+            
+            function rotateToNextApiKey() {
+                if (!apiKeys || apiKeys.length <= 1) return false;
+                currentApiIndex = (currentApiIndex + 1) % apiKeys.length;
+                return true;
+            }
+        
+            async function makeApiRequest(url, maxRetries = null) {
+                if (maxRetries === null) {
+                    maxRetries = apiKeys ? apiKeys.length : 1;
+                }
+                
+                if (!apiKeys || apiKeys.length === 0) {
+                    throw new Error('사용 가능한 API 키가 없습니다.');
+                }
+                
+                for (let attempt = 0; attempt < maxRetries; attempt++) {
+                    const currentKey = getCurrentApiKey();
+                    if (!currentKey) {
+                        throw new Error('사용 가능한 API 키가 없습니다.');
+                    }
+                    
+                    const requestUrl = url.replace('APIKEY_PLACEHOLDER', currentKey);
+                    
+                    try {
+                        const response = await fetch(requestUrl);
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            return { response, data };
+                        } else if (response.status === 403 || response.status === 429) {
+                            console.log(`API 키 오류 (${response.status}): 다음 키로 전환`);
+                            if (!rotateToNextApiKey()) {
+                                throw new Error('모든 API 키가 만료되었습니다.');
+                            }
+                            continue;
+                        } else {
+                            throw new Error(data.error?.message || '채널 검색이 실패했습니다.');
+                        }
+                    } catch (fetchError) {
+                        if (attempt === maxRetries - 1) {
+                            throw fetchError;
+                        }
+                        console.log(`네트워크 오류, 다음 키로 시도: ${fetchError.message}`);
+                        rotateToNextApiKey();
+                    }
+                }
+                
+                throw new Error('모든 API 키 시도 실패');
+            }
+            
+            try {
+                // 1. 채널 검색
+                const searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
+                    `key=APIKEY_PLACEHOLDER&` +
+                    `part=snippet&` +
+                    `type=channel&` +
+                    `q=${encodeURIComponent(channelName)}&` +
+                    `maxResults=50&` +
+                    `regionCode=${regionCode}`;
+                
+                const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
+                const channels = searchData?.items || [];
+                
+                if (channels.length === 0) {
+                    return { data: [], currentApiKeyIndex: currentApiIndex };
+                }
+                
+                // 2. 채널 세부 정보 가져오기
+                const channelIds = channels.map(channel => channel.id?.channelId).filter(id => id).join(',');
+                if (!channelIds) {
+                    return { data: [], currentApiKeyIndex: currentApiIndex };
+                }
+                
+                const detailsUrl = `https://www.googleapis.com/youtube/v3/channels?` +
+                    `key=APIKEY_PLACEHOLDER&` +
+                    `part=snippet,statistics,contentDetails&` +
+                    `id=${channelIds}`;
+                
+                const { response: detailsResponse, data: detailsData } = await makeApiRequest(detailsUrl);
+                const channelDetails = detailsData?.items || [];
+                
+                // 3. 채널 정보 매핑
+                const channelInfoMap = {};
+                channelDetails.forEach(item => {
+                    if (item && item.id) {
+                        channelInfoMap[item.id] = item;
+                    }
+                });
+                
+                // 4. 검색어와 일치 여부 확인 및 정보 조합
+                const exactMatchChannels = [];
+                const partialMatchChannels = [];
+                
+                channels.forEach(channel => {
+                    if (!channel?.id?.channelId) return;
+                    
+                    const channelId = channel.id.channelId;
+                    const details = channelInfoMap[channelId];
+                    
+                    if (!details) return;
+                    
+                    const channelTitle = details.snippet?.title || '';
+                    const channelDescription = details.snippet?.description || '';
+                    const subscriberCount = parseInt(details.statistics?.subscriberCount || 0);
+                    const totalVideos = parseInt(details.statistics?.videoCount || 0);
+                    const thumbnailUrl = details.snippet?.thumbnails?.high?.url || details.snippet?.thumbnails?.default?.url || '';
+                    const uploadPlaylist = details.contentDetails?.relatedPlaylists?.uploads || '';
+                    
+                    // 검색어와 일치 여부 확인
+                    const searchTermLower = channelName.toLowerCase();
+                    const isExactMatch = (
+                        channelTitle.toLowerCase() === searchTermLower ||
+                        channelTitle.toLowerCase().startsWith(searchTermLower) ||
+                        channelTitle.toLowerCase().endsWith(searchTermLower)
+                    );
+                    
+                    const channelData = {
+                        id: channelId,
+                        title: channelTitle,
+                        description: channelDescription,
+                        subscriberCount: subscriberCount,
+                        videoCount: totalVideos,
+                        thumbnailUrl: thumbnailUrl,
+                        uploadPlaylist: uploadPlaylist,
+                        isExactMatch: isExactMatch
+                    };
+                    
+                    if (isExactMatch) {
+                        exactMatchChannels.push(channelData);
+                    } else {
+                        partialMatchChannels.push(channelData);
+                    }
+                });
+                
+                // 정확한 일치 채널을 먼저, 그 다음 부분 일치 채널
+                const allChannels = exactMatchChannels.concat(partialMatchChannels);
+                return { data: allChannels, currentApiKeyIndex: currentApiIndex };
+                
+            } catch (error) {
+                console.error('채널 검색 오류:', error);
+                throw error;
+            }
+        }
     
     // 2. 채널 세부 정보 가져오기 (test.html과 동일)
     const channelIds = channels.map(channel => channel.id.channelId).join(',');
