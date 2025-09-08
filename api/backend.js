@@ -295,7 +295,7 @@ async function handleChannelSearch(req, res) {
 
 
 
-// YouTube 검색 메인 함수 (test.html의 searchYouTubeVideos 완전 포팅)
+// YouTube 검색 메인 함수 (pagination 지원)
 async function searchYouTubeVideos(searchParams, apiKeys) {
     const { 
         keyword, 
@@ -311,14 +311,12 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
     
     let currentApiIndex = 0;
     
-    // 현재 사용 중인 API 키 반환 (test.html과 동일)
     function getCurrentApiKey() {
         if (apiKeys.length === 0) return null;
         if (currentApiIndex >= apiKeys.length) currentApiIndex = 0;
         return apiKeys[currentApiIndex];
     }
     
-    // 다음 API 키로 로테이션 (test.html과 동일)
     function rotateToNextApiKey() {
         if (apiKeys.length <= 1) return false;
         currentApiIndex = (currentApiIndex + 1) % apiKeys.length;
@@ -326,7 +324,6 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         return true;
     }
     
-    // API 요청 함수 (로테이션 지원) - test.html과 완전 동일
     async function makeApiRequest(url, maxRetries = null) {
         if (maxRetries === null) {
             maxRetries = apiKeys.length;
@@ -368,7 +365,6 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
             }
         }
         
-        // 여기가 중요! 모든 시도가 실패했을 때 명시적으로 에러 던지기
         throw new Error('모든 API 키 시도 실패');
     }
     
@@ -379,21 +375,18 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
     let publishedBefore = '';
     
     if (timeFrame === 'custom') {
-        // 날짜 직접 선택 (test.html과 동일)
         if (!startDate || !endDate) {
             throw new Error('시작일과 종료일을 모두 입력해주세요.');
         }
         
         if (new Date(startDate) > new Date(endDate)) {
-            throw new Error('시작일이 종료일보다 늘을 수 없습니다.');
+            throw new Error('시작일이 종료일보다 늦을 수 없습니다.');
         }
         
-        // 한국시간으로 설정
         publishedAfter = new Date(startDate + 'T00:00:00+09:00').toISOString();
         publishedBefore = new Date(endDate + 'T23:59:59+09:00').toISOString();
         
     } else if (timeFrame) {
-        // 기본 기간 옵션들 (한국시간 기준)
         const now = new Date();
         
         switch(timeFrame) {
@@ -421,84 +414,128 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         }
     }
 
-    // YouTube Data API v3 검색 (test.html과 완전 동일)
-    let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `part=snippet&` +
-        `type=${isVideoSearch ? 'video' : 'channel'}&` +
-        `maxResults=${maxResults}&` +
-        `order=${sortBy}&` +
-        `regionCode=${regionCode}`;
-    
-    // 국가별 언어 코드 매핑 (test.html과 완전 동일)
+    // 국가별 언어 코드 매핑
     const languageMapping = {
-        "KR": "ko",   // 한국
-        "JP": "ja",   // 일본
-        "US": "en",   // 미국
-        "TW": "zh-TW", // 대만
-        "GB": "en",   // 영국
-        "CA": "en",   // 캐나다
-        "AU": "en",   // 호주
-        "DE": "de",   // 독일
-        "FR": "fr",   // 프랑스
-        "ES": "es",   // 스페인
-        "BR": "pt",   // 브라질
-        "IN": "hi",   // 인도
-        "RU": "ru"    // 러시아
+        "KR": "ko", "JP": "ja", "US": "en", "TW": "zh-TW", "GB": "en",
+        "CA": "en", "AU": "en", "DE": "de", "FR": "fr", "ES": "es",
+        "BR": "pt", "IN": "hi", "RU": "ru"
     };
     
-    // 해당 국가의 언어 설정 추가
-    if (regionCode in languageMapping) {
-        searchUrl += `&relevanceLanguage=${languageMapping[regionCode]}`;
-    }
+    // 페이지네이션으로 여러 번 검색
+    let allSearchResults = [];
+    let nextPageToken = '';
+    let remainingResults = maxResults;
     
-    // 검색어 처리 (test.html과 완전 동일)
-    if (keyword) {
-        searchUrl += `&q=${encodeURIComponent(keyword)}`;
-    } else {
-        // 검색어 없을 때는 일반적인 키워드 사용
-        searchUrl += `&q=*`;
+    while (remainingResults > 0) {
+        const currentBatchSize = Math.min(50, remainingResults); // API 제한: 최대 50개
+        
+        let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `part=snippet&` +
+            `type=${isVideoSearch ? 'video' : 'channel'}&` +
+            `maxResults=${currentBatchSize}&` +
+            `order=${sortBy}&` +
+            `regionCode=${regionCode}`;
+        
+        // 해당 국가의 언어 설정 추가
+        if (regionCode in languageMapping) {
+            searchUrl += `&relevanceLanguage=${languageMapping[regionCode]}`;
+        }
+        
+        // 검색어 처리
+        if (keyword) {
+            searchUrl += `&q=${encodeURIComponent(keyword)}`;
+        } else {
+            searchUrl += `&q=*`;
+        }
+
+        if (publishedAfter) {
+            searchUrl += `&publishedAfter=${publishedAfter}`;
+        }
+        if (publishedBefore) {
+            searchUrl += `&publishedBefore=${publishedBefore}`;
+        }
+        if (videoLicense) {
+            searchUrl += `&videoLicense=${videoLicense}`;
+        }
+        if (nextPageToken) {
+            searchUrl += `&pageToken=${nextPageToken}`;
+        }
+
+        console.log(`검색 API 호출 (${currentBatchSize}개)`);
+        const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
+        
+        if (!searchData.items || searchData.items.length === 0) {
+            console.log('더 이상 검색 결과가 없음');
+            break;
+        }
+        
+        allSearchResults = allSearchResults.concat(searchData.items);
+        remainingResults -= searchData.items.length;
+        
+        // 다음 페이지가 있고 아직 더 수집해야 할 경우
+        if (searchData.nextPageToken && remainingResults > 0) {
+            nextPageToken = searchData.nextPageToken;
+        } else {
+            break;
+        }
     }
 
-    if (publishedAfter) {
-        searchUrl += `&publishedAfter=${publishedAfter}`;
-    }
-    if (publishedBefore) {
-        searchUrl += `&publishedBefore=${publishedBefore}`;
-    }
-    if (videoLicense) {
-        searchUrl += `&videoLicense=${videoLicense}`;
+    if (allSearchResults.length === 0) {
+        return [];
     }
 
-    const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
+    // 비디오 상세 정보 가져오기 (50개씩 나누어서 요청)
+    let allVideoDetails = [];
+    for (let i = 0; i < allSearchResults.length; i += 50) {
+        const batch = allSearchResults.slice(i, i + 50);
+        const videoIds = batch.map(item => item.id.videoId).filter(id => id).join(',');
+        
+        if (!videoIds) continue;
+        
+        const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `id=${videoIds}&` +
+            `part=snippet,statistics,contentDetails`;
 
-    // 비디오 상세 정보 가져오기 (test.html과 동일)
-    const videoIds = searchData.items.map(item => item.id.videoId).join(',');
-    const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `id=${videoIds}&` +
-        `part=snippet,statistics,contentDetails`;
+        console.log(`비디오 상세정보 API 호출 (배치 ${Math.floor(i/50) + 1})`);
+        const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
+        
+        if (videosData.items) {
+            allVideoDetails = allVideoDetails.concat(videosData.items);
+        }
+    }
 
-    const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
+    // 채널 정보 가져오기 (50개씩 나누어서 요청)
+    const uniqueChannelIds = [...new Set(allVideoDetails.map(item => item.snippet.channelId))];
+    let allChannelDetails = [];
+    
+    for (let i = 0; i < uniqueChannelIds.length; i += 50) {
+        const batch = uniqueChannelIds.slice(i, i + 50);
+        const channelIds = batch.join(',');
+        
+        const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `id=${channelIds}&` +
+            `part=snippet,statistics`;
 
-    // 채널 정보 가져오기 (test.html과 동일)
-    const channelIds = [...new Set(videosData.items.map(item => item.snippet.channelId))].join(',');
-    const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `id=${channelIds}&` +
-        `part=snippet,statistics`;
+        console.log(`채널 정보 API 호출 (배치 ${Math.floor(i/50) + 1})`);
+        const { response: channelsResponse, data: channelsData } = await makeApiRequest(channelsUrl);
+        
+        if (channelsData.items) {
+            allChannelDetails = allChannelDetails.concat(channelsData.items);
+        }
+    }
 
-    const { response: channelsResponse, data: channelsData } = await makeApiRequest(channelsUrl);
-
-    // 결과 조합 및 크리에이티브 커먼즈 필터링 (test.html과 완전 동일)
-    let results = videosData.items.map((video, index) => {
-        const channel = channelsData.items.find(ch => ch.id === video.snippet.channelId);
+    // 결과 조합
+    let results = allVideoDetails.map((video, index) => {
+        const channel = allChannelDetails.find(ch => ch.id === video.snippet.channelId);
         const subscriberCount = parseInt(channel?.statistics?.subscriberCount || 0);
         const viewCount = parseInt(video.statistics?.viewCount || 0);
         const likeCount = parseInt(video.statistics?.likeCount || 0);
         const commentCount = parseInt(video.statistics?.commentCount || 0);
 
-        // CII 점수 계산 (test.html과 완전 동일한 공식)
+        // CII 점수 계산
         const channelTotalViewCount = parseInt(channel?.statistics?.viewCount || 0);
         const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
         const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
@@ -510,7 +547,7 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         else if (ciiScore >= 30) cii = 'Soso';
         else if (ciiScore >= 10) cii = 'Not bad';
         
-        // 쇼츠 여부 판단 (영상 길이 60초 이하를 쇼츠로 간주) - test.html과 완전 동일
+        // 쇼츠 여부 판단
         const durationParts = video.contentDetails?.duration?.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
         let totalSeconds = 0;
         if (durationParts) {
@@ -526,49 +563,48 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
             thumbnail: video.snippet?.thumbnails?.default?.url || '',
             title: video.snippet?.title || '',
             channelTitle: video.snippet?.channelTitle || '',
-            channelId: video.snippet?.channelId || '', // 채널 ID 추가
+            channelId: video.snippet?.channelId || '',
             duration: formatDuration(video.contentDetails?.duration || ''),
             publishedAt: formatDate(video.snippet?.publishedAt || ''),
-            publishedAtRaw: video.snippet?.publishedAt || '', // 정렬용 원시 데이터 추가
+            publishedAtRaw: video.snippet?.publishedAt || '',
             subscriberCount: subscriberCount,
             viewCount: viewCount,
-            contributionValue: parseFloat(contributionValue.toFixed(2)), // 정렬용 숫자값
-            performanceValue: parseFloat(performanceValue.toFixed(2)), // 정렬용 숫자값
+            contributionValue: parseFloat(contributionValue.toFixed(2)),
+            performanceValue: parseFloat(performanceValue.toFixed(2)),
             cii: cii,
-            ciiScore: parseFloat(ciiScore.toFixed(1)), // 정렬용 숫자값
+            ciiScore: parseFloat(ciiScore.toFixed(1)),
             commentCount: commentCount,
             likeCount: likeCount,
             totalVideos: parseInt(channel?.statistics?.videoCount || 0),
             videoId: video.id || '',
             license: video.status?.license || 'youtube',
             isShorts: isShorts,
-            engagementRate: viewCount > 0 ? parseFloat(((likeCount + commentCount) / viewCount * 100).toFixed(1)) : 0, // 정렬용 숫자값
-            description: video.snippet?.description || '' // 설명 추가
+            engagementRate: viewCount > 0 ? parseFloat(((likeCount + commentCount) / viewCount * 100).toFixed(1)) : 0,
+            description: video.snippet?.description || ''
         };
     });
 
-    // test.html과 동일한 클라이언트 재정렬
+    // 정렬
     if (isViewsSort) {
-        // 조회수순 정렬 (내림차순)
         results = results.sort((a, b) => b.viewCount - a.viewCount);
     } else {
-        // 최신순 정렬 (시간순 내림차순)
         results = results.sort((a, b) => new Date(b.publishedAtRaw) - new Date(a.publishedAtRaw));
     }
     
-    // 인덱스 재조정 (정렬 후) - test.html과 동일
+    // 인덱스 재조정
     results = results.map((item, index) => ({
         ...item,
         index: index + 1
     }));
 
-    // 크리에이티브 커먼즈 필터링 (클라이언트 사이드) - test.html과 동일
+    // 크리에이티브 커먼즈 필터링
     if (!isAllVideos) {
         results = results.filter(video => video.license === 'creativeCommon');
     }
 
     return results;
 }
+
 
 // 단일 비디오 데이터 가져오기 함수 (test.html의 fetchSingleVideoData 완전 포팅)
 async function fetchSingleVideoData(videoId, apiKeys) {
