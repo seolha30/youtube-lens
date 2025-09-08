@@ -193,7 +193,7 @@ async function handleTranslate(req, res) {
 
 // 채널 정보 처리 함수 (test.html의 fetchDetailedChannelInfo 완전 포팅)
 async function handleChannelInfo(req, res) {
-    const { channelId, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
+    const { channelId, apiKeys, currentApiKeyIndex, maxResults } = req.method === 'GET' ? req.query : req.body;
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -203,7 +203,7 @@ async function handleChannelInfo(req, res) {
     }
     
     try {
-        const result = await fetchDetailedChannelInfo(channelId, apiKeys, parseInt(currentApiKeyIndex) || 0);
+        const result = await fetchDetailedChannelInfo(channelId, apiKeys, parseInt(maxResults) || 50);
         
         res.status(200).json({
             success: true,
@@ -220,6 +220,7 @@ async function handleChannelInfo(req, res) {
         });
     }
 }
+
 
 
 // 채널 영상 수집 처리 함수 (test.html의 fetchChannelVideos 완전 포팅)
@@ -871,7 +872,7 @@ async function googleTranslate(text, targetLang) {
 }
 
 // 상세한 채널 정보 가져오기 (test.html의 fetchDetailedChannelInfo 완전 포팅)
-async function fetchDetailedChannelInfo(channelId, apiKeys) {
+async function fetchDetailedChannelInfo(channelId, apiKeys, maxResults = 50) {
     let currentApiIndex = 0;
     
     function getCurrentApiKey() {
@@ -886,7 +887,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         return true;
     }
 
-    // API 요청 함수 (로테이션 지원) - test.html과 동일
     async function makeApiRequest(url, maxRetries = apiKeys.length) {
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentKey = getCurrentApiKey();
@@ -921,7 +921,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         }
     }
     
-    // 1. 채널 기본 정보 가져오기 (test.html과 동일)
     const channelUrl = `https://www.googleapis.com/youtube/v3/channels?` +
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet,statistics,contentDetails&` +
@@ -940,7 +939,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         return null;
     }
     
-    // 2. 채널 영상 목록 가져오기 (최근 50개) - test.html과 동일
     const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet&` +
@@ -954,7 +952,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         return { channelInfo, top3Videos: [], videosWithStats: [] };
     }
     
-    // 3. 비디오 상세 정보 가져오기 (조회수, 좋아요 등) - test.html과 동일
     const videoIds = videos.map(item => item.snippet.resourceId.videoId).join(',');
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
         `key=APIKEY_PLACEHOLDER&` +
@@ -964,7 +961,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
     const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
     const videoDetails = videosData.items || [];
     
-    // 4. 비디오 데이터 매핑 및 TOP3 계산 (test.html과 동일)
     const videosMap = {};
     videoDetails.forEach(video => {
         videosMap[video.id] = video;
@@ -980,7 +976,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
             const likeCount = parseInt(videoInfo.statistics?.likeCount || 0);
             const commentCount = parseInt(videoInfo.statistics?.commentCount || 0);
             
-            // 기여도와 성과도 계산 (test.html과 동일)
             const channelTotalViews = parseInt(channelInfo.statistics?.viewCount || 0);
             const subscriberCount = parseInt(channelInfo.statistics?.subscriberCount || 0);
             const contribution = channelTotalViews > 0 ? (viewCount / channelTotalViews) * 100 : 0;
@@ -1000,7 +995,6 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         }
     });
     
-    // 조회수 기준으로 정렬하여 TOP3 선택 (test.html과 동일)
     videosWithStats.sort((a, b) => b.viewCount - a.viewCount);
     const top3Videos = videosWithStats.slice(0, 3);
     
@@ -1011,6 +1005,7 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         uploadPlaylist
     };
 }
+
 
 // 채널 영상 수집 함수 (test.html의 fetchChannelVideos 완전 포팅)
 async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys, startApiKeyIndex = 0) {
