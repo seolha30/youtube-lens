@@ -19,6 +19,12 @@ export default async function handler(req, res) {
     
     try {
         const { action } = req.method === 'GET' ? req.query : req.body;
+        // 프론트엔드에서 전달받은 현재 API 키 인덱스 사용
+        if (typeof req.body.currentApiKeyIndex === 'number' && 
+            req.body.currentApiKeyIndex >= 0 && 
+            req.body.currentApiKeyIndex < (req.body.apiKeys?.length || 0)) {
+            currentApiIndex = req.body.currentApiKeyIndex;
+        }
         
         switch (action) {
             case 'search':
@@ -91,7 +97,8 @@ async function handleSearch(req, res) {
         res.status(200).json({
             success: true,
             data: results,
-            message: `검색 완료 - ${results.length}개 결과`
+            message: `검색 완료 - ${results.length}개 결과`,
+            currentApiKeyIndex: currentApiIndex  // 현재 API 키 인덱스 추가
         });
     } catch (error) {
         console.error('검색 오류:', error);
@@ -128,7 +135,8 @@ async function handleAnalyze(req, res) {
         res.status(200).json({
             success: true,
             data: [result],
-            message: 'URL 분석 완료'
+            message: 'URL 분석 완료',
+            currentApiKeyIndex: currentApiIndex
         });
     } catch (error) {
         console.error('URL 분석 오류:', error);
@@ -303,7 +311,15 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
     }
     
     // API 요청 함수 (로테이션 지원) - test.html과 완전 동일
-    async function makeApiRequest(url, maxRetries = apiKeys.length) {
+    async function makeApiRequest(url, maxRetries = null) {
+        if (maxRetries === null) {
+            maxRetries = apiKeys.length;
+        }
+        
+        if (apiKeys.length === 0) {
+            throw new Error('사용 가능한 API 키가 없습니다.');
+        }
+        
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentKey = getCurrentApiKey();
             if (!currentKey) {
@@ -319,13 +335,11 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
                 if (response.ok) {
                     return { response, data };
                 } else if (response.status === 403 || response.status === 429) {
-                    // API 키 초과 또는 만료 - 다음 키로 로테이션
                     console.log(`API 키 오류 (${response.status}): 다음 키로 전환`);
                     if (!rotateToNextApiKey()) {
-                        // 로테이션 실패 (마지막 키)
                         throw new Error('모든 API 키가 만료되었습니다. 새로운 API 키를 추가해주세요.');
                     }
-                    continue; // 다음 시도
+                    continue;
                 } else {
                     throw new Error(data.error?.message || '검색 요청이 실패했습니다.');
                 }
@@ -337,6 +351,9 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
                 rotateToNextApiKey();
             }
         }
+        
+        // 여기가 중요! 모든 시도가 실패했을 때 명시적으로 에러 던지기
+        throw new Error('모든 API 키 시도 실패');
     }
     
     const sortBy = isViewsSort ? 'viewCount' : 'date';
