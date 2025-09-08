@@ -2220,6 +2220,8 @@
                         apiKeys: apiKeys
                     };
                     
+                    console.log('프론트엔드에서 보내는 데이터:', searchParams);
+                    
                     const result = await callBackendAPI('search', searchParams);
                     
                     originalResults = result.data;
@@ -2234,16 +2236,24 @@
                     
                     const regionCode = document.getElementById('regionCode').value;
                     
+                    console.log('채널 검색 요청 시작:', keyword, regionCode);
+                    
                     const result = await callBackendAPI('channelSearch', {
                         channelName: keyword,
                         regionCode: regionCode,
                         apiKeys: apiKeys
                     });
                     
+                    // 디버깅: 실제 응답 데이터 확인
+                    console.log('채널 검색 응답 전체:', result);
+                    console.log('result.data:', result.data);
+                    console.log('result.data 타입:', typeof result.data);
+                    
                     if (result.data && result.data.length > 0) {
                         showChannelSelectionDialog(result.data, keyword);
                         updateStatus(`채널 검색 완료 - ${result.data.length}개 채널 발견`);
                     } else {
+                        console.log('채널 검색 결과 없음 또는 데이터 구조 문제');
                         alert('검색된 채널이 없습니다.');
                         updateStatus('채널 검색 결과 없음');
                         showLoading(false);
