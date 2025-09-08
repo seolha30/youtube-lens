@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     }
     
     try {
+        let currentApiIndex = 0;
         const { action } = req.method === 'GET' ? req.query : req.body;
         // 프론트엔드에서 전달받은 현재 API 키 인덱스 사용
         if (typeof req.body.currentApiKeyIndex === 'number' && 
