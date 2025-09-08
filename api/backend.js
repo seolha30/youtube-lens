@@ -945,7 +945,7 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet&` +
         `playlistId=${uploadPlaylist}&` +
-        `maxResults=50`;
+        `maxResults=${maxResults}`;
     
     const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
     const videos = playlistData.items || [];
