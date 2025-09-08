@@ -83,9 +83,9 @@ async function handleSearch(req, res) {
             maxResults: parseInt(maxResults) || 50,
             timeFrame,
             regionCode: regionCode || 'KR',
-            isViewsSort: isViewsSort !== 'false',
-            isAllVideos: isAllVideos !== 'false',
-            isVideoSearch: isVideoSearch !== 'false',
+            isViewsSort: isViewsSort === true || isViewsSort === 'true',
+            isAllVideos: isAllVideos === true || isAllVideos === 'true', 
+            isVideoSearch: isVideoSearch === true || isVideoSearch === 'true',
             startDate,
             endDate,
             currentApiKeyIndex: parseInt(currentApiKeyIndex) || 0
