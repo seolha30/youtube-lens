@@ -615,8 +615,8 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
 
 
 // 단일 비디오 데이터 가져오기 함수 (test.html의 fetchSingleVideoData 완전 포팅)
-async function fetchSingleVideoData(videoId, apiKeys) {
-    let currentApiIndex = 0;
+async function fetchSingleVideoData(videoId, apiKeys, startApiKeyIndex = 0) {
+    let currentApiIndex = startApiKeyIndex;
     
     function getCurrentApiKey() {
         if (apiKeys.length === 0) return null;
@@ -665,23 +665,23 @@ async function fetchSingleVideoData(videoId, apiKeys) {
     }
     
     try {
-        // 1. 비디오 상세 정보 가져오기 (test.html과 동일)
+        // 1. 비디오 상세 정보 가져오기
         const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
             `key=APIKEY_PLACEHOLDER&` +
             `id=${videoId}&` +
-            `part=snippet,statistics,contentDetails`;
+            `part=snippet,statistics,contentDetails,status`;
         
         const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
         
         if (!videosData.items || videosData.items.length === 0) {
-            return null;
+            return { data: null, currentApiKeyIndex: currentApiIndex };
         }
         
         const video = videosData.items[0];
         
-        // 2. 채널 정보 가져오기 (test.html과 동일)
+        // 2. 채널 정보 가져오기
         const channelId = video.snippet?.channelId;
-        if (!channelId) return null;
+        if (!channelId) return { data: null, currentApiKeyIndex: currentApiIndex };
         
         const channelsUrl = `https://www.googleapis.com/youtube/v3/channels?` +
             `key=APIKEY_PLACEHOLDER&` +
@@ -691,18 +691,18 @@ async function fetchSingleVideoData(videoId, apiKeys) {
         const { response: channelsResponse, data: channelsData } = await makeApiRequest(channelsUrl);
         
         if (!channelsData.items || channelsData.items.length === 0) {
-            return null;
+            return { data: null, currentApiKeyIndex: currentApiIndex };
         }
         
         const channel = channelsData.items[0];
         
-        // 3. 데이터 조합 및 계산 (기존 검색과 동일한 로직) - test.html과 동일
+        // 3. 데이터 조합 및 계산
         const subscriberCount = parseInt(channel.statistics?.subscriberCount || 0);
         const viewCount = parseInt(video.statistics?.viewCount || 0);
         const likeCount = parseInt(video.statistics?.likeCount || 0);
         const commentCount = parseInt(video.statistics?.commentCount || 0);
         
-        // CII 점수 계산 (test.html과 동일)
+        // CII 점수 계산
         const channelTotalViewCount = parseInt(channel.statistics?.viewCount || 0);
         const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
         const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
@@ -714,7 +714,7 @@ async function fetchSingleVideoData(videoId, apiKeys) {
         else if (ciiScore >= 30) cii = 'Soso';
         else if (ciiScore >= 10) cii = 'Not bad';
         
-        // 쇼츠 여부 판단 (영상 길이 60초 이하를 쇼츠로 간주) - test.html과 동일
+        // 쇼츠 여부 판단
         const durationParts = video.contentDetails?.duration?.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
         let totalSeconds = 0;
         if (durationParts) {
@@ -725,8 +725,8 @@ async function fetchSingleVideoData(videoId, apiKeys) {
         }
         const isShorts = totalSeconds <= 60;
         
-        // 결과 객체 생성 (기존 displayResults 함수와 호환) - test.html과 동일
-        return {
+        // 결과 객체 생성
+        const result = {
             index: 1,
             thumbnail: video.snippet?.thumbnails?.default?.url || '',
             title: video.snippet?.title || '',
@@ -751,11 +751,14 @@ async function fetchSingleVideoData(videoId, apiKeys) {
             description: video.snippet?.description || ''
         };
         
+        return { data: result, currentApiKeyIndex: currentApiIndex };
+        
     } catch (error) {
         console.error('단일 비디오 데이터 가져오기 오류:', error);
         throw error;
     }
 }
+
 
 // 필터 적용 함수 (test.html의 applyFilters 완전 포팅)
 function applyFilters(results, filters) {
