@@ -420,17 +420,26 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         }
     }
 
-    // YouTube Data API v3 ê²€ìƒ‰ - Pagination ì§€ì› ì¶"ê°€
-        const apiMaxResults = Math.min(50, maxResults); // API 최대값은 50
-        const totalPagesNeeded = Math.ceil(maxResults / 50); // 필요한 페이지 수
+    // YouTube Data API v3 검색 - Pagination 지원 추가
+    const apiMaxResults = Math.min(50, maxResults); // API 최대값은 50
+    const totalPagesNeeded = Math.ceil(maxResults / 50); // 필요한 페이지 수
+    
+    let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
+        `key=APIKEY_PLACEHOLDER&` +
+        `part=snippet&` +
+        `type=${isVideoSearch ? 'video' : 'channel'}&` +
+        `maxResults=${apiMaxResults}&` +
+        `regionCode=${regionCode}`;
+    
+    // 영상 검색일 때만 추가 파라미터 적용
+    if (isVideoSearch) {
+        searchUrl += `&order=${sortBy}`;
         
-        let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
-            `key=APIKEY_PLACEHOLDER&` +
-            `part=snippet&` +
-            `type=${isVideoSearch ? 'video' : 'channel'}&` +
-            `maxResults=${apiMaxResults}&` +
-            `order=${sortBy}&` +
-            `regionCode=${regionCode}`;
+        
+    } else {
+        // 채널 검색일 때는 relevance 정렬만 사용
+        searchUrl += `&order=relevance`;
+    }
     
     // 국가별 언어 코드 매핑 (test.html과 완전 동일)
     const languageMapping = {
