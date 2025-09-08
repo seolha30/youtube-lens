@@ -2130,29 +2130,58 @@
             
             switch(filterType) {
                 case 'shorts':
-                    currentFilters.shorts = !currentFilters.shorts;
-                    filterBtn = document.getElementById('shortsFilter');
+                    // 쇼츠가 이미 켜져있으면 끄기 (전체 선택)
+                    if (currentFilters.shorts) {
+                        currentFilters.shorts = false;
+                        currentFilters.longform = false;
+                        document.getElementById('shortsFilter').classList.remove('active');
+                        document.getElementById('longformFilter').classList.remove('active');
+                    } else {
+                        // 쇼츠 켜고 롱폼 끄기
+                        currentFilters.shorts = true;
+                        currentFilters.longform = false;
+                        document.getElementById('shortsFilter').classList.add('active');
+                        document.getElementById('longformFilter').classList.remove('active');
+                    }
                     break;
+                    
                 case 'longform':
-                    currentFilters.longform = !currentFilters.longform;
-                    filterBtn = document.getElementById('longformFilter');
+                    // 롱폼이 이미 켜져있으면 끄기 (전체 선택)
+                    if (currentFilters.longform) {
+                        currentFilters.shorts = false;
+                        currentFilters.longform = false;
+                        document.getElementById('shortsFilter').classList.remove('active');
+                        document.getElementById('longformFilter').classList.remove('active');
+                    } else {
+                        // 롱폼 켜고 쇼츠 끄기
+                        currentFilters.shorts = false;
+                        currentFilters.longform = true;
+                        document.getElementById('shortsFilter').classList.remove('active');
+                        document.getElementById('longformFilter').classList.add('active');
+                    }
                     break;
+                    
                 case 'cii-great':
                     currentFilters.ciiGreat = !currentFilters.ciiGreat;
                     filterBtn = document.getElementById('ciiGreat');
+                    if (filterBtn) {
+                        filterBtn.classList.toggle('active');
+                    }
                     break;
                 case 'cii-good':
                     currentFilters.ciiGood = !currentFilters.ciiGood;
                     filterBtn = document.getElementById('ciiGood');
+                    if (filterBtn) {
+                        filterBtn.classList.toggle('active');
+                    }
                     break;
                 case 'cii-soso':
                     currentFilters.ciiSoso = !currentFilters.ciiSoso;
                     filterBtn = document.getElementById('ciiSoso');
+                    if (filterBtn) {
+                        filterBtn.classList.toggle('active');
+                    }
                     break;
-            }
-            
-            if (filterBtn) {
-                filterBtn.classList.toggle('active');
             }
         }
 
