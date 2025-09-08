@@ -1474,14 +1474,19 @@ function formatDate(dateStr) {
     }
 }
 
-// YouTube URL에서 비디오 ID 추출 함수 (test.html과 완전 동일)
+// YouTube URL에서 비디오 ID 추출 함수 (Shorts 지원)
 function extractVideoId(url) {
     if (!url) return null;
     
-    // 다양한 YouTube URL 형식 지원
+    // 다양한 YouTube URL 형식 지원 (Shorts 포함)
     const patterns = [
+        // 일반 YouTube URL
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-        /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+        /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+        // YouTube Shorts URL
+        /(?:youtube\.com\/shorts\/|www\.youtube\.com\/shorts\/)([^&\n?#]+)/,
+        // 모바일 Shorts URL
+        /(?:m\.youtube\.com\/shorts\/)([^&\n?#]+)/
     ];
     
     for (let pattern of patterns) {
