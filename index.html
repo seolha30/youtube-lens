@@ -1985,47 +1985,8 @@
         }
 
         // API 키 관리 함수들
-        function addApiKey() {
-            const newKeyInput = document.getElementById('newApiKeyInput');
-            const newKey = newKeyInput.value.trim();
-            
-            if (!newKey) {
-                alert('API 키를 입력해주세요.');
-                return;
-            }
-            
-            // 중복 확인
-            if (apiKeys.includes(newKey)) {
-                alert('이미 등록된 API 키입니다.');
-                return;
-            }
-            
-            apiKeys.push(newKey);
-            localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
-            
-            newKeyInput.value = '';
-            updateApiKeysList();
-            
-            console.log('✅ API 키 추가됨:', apiKeys.length + '개');
-            alert('API 키가 추가되었습니다.');
-        }
         
-        function removeApiKey(index) {
-            if (confirm('이 API 키를 삭제하시겠습니까?')) {
-                apiKeys.splice(index, 1);
-                
-                // 현재 인덱스 조정
-                if (currentApiKeyIndex >= apiKeys.length) {
-                    currentApiKeyIndex = 0;
-                }
-                
-                localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
-                localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
-                
-                updateApiKeysList();
-                console.log('🗑️ API 키 삭제됨:', apiKeys.length + '개 남음');
-            }
-        }
+        
         
         function updateApiKeysList() {
             const listContainer = document.getElementById('apiKeysList');
@@ -2089,7 +2050,8 @@
                     body: JSON.stringify({
                         action: action,
                         ...data,
-                        apiKeys: apiKeys
+                        apiKeys: apiKeys,
+                        currentApiKeyIndex: currentApiKeyIndex  // 현재 인덱스 전달
                     })
                 });
 
@@ -2097,6 +2059,15 @@
                 
                 if (!result.success) {
                     throw new Error(result.message || 'API 요청 실패');
+                }
+                
+                // 백엔드에서 로테이션이 발생했으면 프론트엔드 인덱스 동기화
+                if (typeof result.currentApiKeyIndex === 'number' && 
+                    result.currentApiKeyIndex !== currentApiKeyIndex) {
+                    console.log(`🔄 API 키 인덱스 동기화: ${currentApiKeyIndex} → ${result.currentApiKeyIndex}`);
+                    currentApiKeyIndex = result.currentApiKeyIndex;
+                    localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
+                    updateApiKeysList(); // UI 업데이트
                 }
                 
                 return result;
@@ -2972,37 +2943,44 @@
         }
 
         function addApiKey() {
-            const newApiKey = document.getElementById('newApiKeyInput').value.trim();
-            if (!newApiKey) {
+            const newKeyInput = document.getElementById('newApiKeyInput');
+            const newKey = newKeyInput.value.trim();
+            
+            if (!newKey) {
                 alert('API 키를 입력해주세요.');
                 return;
             }
             
-            if (apiKeys.includes(newApiKey)) {
+            // 중복 확인
+            if (apiKeys.includes(newKey)) {
                 alert('이미 등록된 API 키입니다.');
                 return;
             }
             
-            apiKeys.push(newApiKey);
-            localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
+            apiKeys.push(newKey);
+            localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
             
-            document.getElementById('newApiKeyInput').value = '';
-            loadApiKeysList();
+            newKeyInput.value = '';
+            updateApiKeysList();
             
-            updateStatus(`API 키 추가됨 - 총 ${apiKeys.length}개`);
+            console.log('✅ API 키 추가됨:', apiKeys.length + '개');
+            alert('API 키가 추가되었습니다.');
         }
 
         function removeApiKey(index) {
             if (confirm('이 API 키를 삭제하시겠습니까?')) {
-                // 현재 사용 중인 키를 삭제하는 경우 인덱스 조정
-                if (index <= currentApiKeyIndex) {
-                    currentApiKeyIndex = Math.max(0, currentApiKeyIndex - 1);
+                apiKeys.splice(index, 1);
+                
+                // 현재 인덱스 조정
+                if (currentApiKeyIndex >= apiKeys.length) {
+                    currentApiKeyIndex = 0;
                 }
                 
-                apiKeys.splice(index, 1);
-                localStorage.setItem('youtubeApiKeys', JSON.stringify(apiKeys));
-                loadApiKeysList();
-                updateStatus(`API 키 삭제됨 - 총 ${apiKeys.length}개`);
+                localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
+                localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
+                
+                updateApiKeysList();
+                console.log('🗑️ API 키 삭제됨:', apiKeys.length + '개 남음');
             }
         }
 
