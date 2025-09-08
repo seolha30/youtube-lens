@@ -1085,41 +1085,72 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         
         const channelInfo = channelData.items[0];
         
-        // 업로드 플레이리스트에서 영상 목록 가져오기
-        const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
-            `key=APIKEY_PLACEHOLDER&` +
-            `part=snippet&` +
-            `playlistId=${uploadPlaylist}&` +
-            `maxResults=${maxResults}`;
+        // 페이지네이션으로 여러 번 요청하여 원하는 개수만큼 수집
+        let allVideos = [];
+        let nextPageToken = '';
+        let remainingResults = maxResults;
         
-        console.log('플레이리스트 영상 목록 API 호출');
-        const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
-        const videos = playlistData.items || [];
+        while (remainingResults > 0) {
+            const currentBatchSize = Math.min(50, remainingResults); // API 제한: 최대 50개
+            
+            let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
+                `key=APIKEY_PLACEHOLDER&` +
+                `part=snippet&` +
+                `playlistId=${uploadPlaylist}&` +
+                `maxResults=${currentBatchSize}`;
+            
+            if (nextPageToken) {
+                playlistUrl += `&pageToken=${nextPageToken}`;
+            }
+            
+            console.log(`플레이리스트 영상 목록 API 호출 (${currentBatchSize}개)`);
+            const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
+            const videos = playlistData.items || [];
+            
+            if (videos.length === 0) {
+                console.log('더 이상 영상이 없음');
+                break;
+            }
+            
+            allVideos = allVideos.concat(videos);
+            remainingResults -= videos.length;
+            
+            // 다음 페이지가 있고 아직 더 수집해야 할 경우
+            if (playlistData.nextPageToken && remainingResults > 0) {
+                nextPageToken = playlistData.nextPageToken;
+            } else {
+                break;
+            }
+        }
         
-        if (videos.length === 0) {
+        if (allVideos.length === 0) {
             console.log('플레이리스트에 영상이 없음');
             return { data: [], currentApiKeyIndex: currentApiIndex };
         }
         
-        // 비디오 상세 정보 가져오기
-        const videoIds = videos.map(item => item.snippet?.resourceId?.videoId).filter(id => id).join(',');
-        if (!videoIds) {
-            console.log('유효한 비디오 ID가 없음');
-            return { data: [], currentApiKeyIndex: currentApiIndex };
+        // 비디오 상세 정보 가져오기 (50개씩 나누어서 요청)
+        let allVideoDetails = [];
+        for (let i = 0; i < allVideos.length; i += 50) {
+            const batch = allVideos.slice(i, i + 50);
+            const videoIds = batch.map(item => item.snippet?.resourceId?.videoId).filter(id => id).join(',');
+            
+            if (!videoIds) continue;
+            
+            const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
+                `key=APIKEY_PLACEHOLDER&` +
+                `id=${videoIds}&` +
+                `part=snippet,statistics,contentDetails`;
+            
+            console.log(`비디오 상세정보 API 호출 (배치 ${Math.floor(i/50) + 1})`);
+            const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
+            const videoDetails = videosData.items || [];
+            
+            allVideoDetails = allVideoDetails.concat(videoDetails);
         }
-        
-        const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
-            `key=APIKEY_PLACEHOLDER&` +
-            `id=${videoIds}&` +
-            `part=snippet,statistics,contentDetails`;
-        
-        console.log('비디오 상세정보 API 호출');
-        const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
-        const videoDetails = videosData.items || [];
         
         // 비디오 데이터 매핑
         const videosMap = {};
-        videoDetails.forEach(video => {
+        allVideoDetails.forEach(video => {
             if (video && video.id) {
                 videosMap[video.id] = video;
             }
@@ -1127,7 +1158,7 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         
         // 결과 조합
         const results = [];
-        videos.forEach((item, index) => {
+        allVideos.forEach((item, index) => {
             const videoId = item.snippet?.resourceId?.videoId;
             const videoInfo = videosMap[videoId];
             
