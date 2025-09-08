@@ -1227,8 +1227,10 @@ async function searchChannelByName(channelName, regionCode, apiKeys) {
         `maxResults=50&` +
         `regionCode=${regionCode}`;
     
-        async function searchChannelByName(channelName, regionCode, apiKeys) {
-            let currentApiIndex = 0;
+        async function searchChannelByName(channelName, regionCode, apiKeys, startApiKeyIndex = 0) {
+            let currentApiIndex = startApiKeyIndex;
+            
+            console.log('🔍 searchChannelByName 시작:', { channelName, regionCode, apiKeysCount: apiKeys?.length, startApiKeyIndex });
             
             function getCurrentApiKey() {
                 if (!apiKeys || apiKeys.length === 0) return null;
@@ -1379,6 +1381,7 @@ async function searchChannelByName(channelName, regionCode, apiKeys) {
                 throw error;
             }
         }
+
     
     // 2. 채널 세부 정보 가져오기 (test.html과 동일)
     const channelIds = channels.map(channel => channel.id.channelId).join(',');
