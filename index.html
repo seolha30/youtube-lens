@@ -2185,6 +2185,7 @@
         }
 
         // 검색 함수
+        // startSearch 함수 수정 - 채널 검색 모드 처리 추가
         async function startSearch() {
             if (!requireAuth('검색')) return;
             
@@ -2201,31 +2202,52 @@
             }
             
             showLoading(true);
-            updateStatus('검색 중...');
             
             try {
-                const searchParams = {
-                    keyword: keyword,
-                    maxResults: parseInt(document.getElementById('maxResults').value),
-                    timeFrame: document.getElementById('timeFrame').value,
-                    regionCode: document.getElementById('regionCode').value,
-                    startDate: document.getElementById('startDate').value,
-                    endDate: document.getElementById('endDate').value,
-                    isViewsSort: isViewsSort,
-                    isAllVideos: isAllVideos,
-                    isVideoSearch: isVideoSearch,
-                    apiKeys: apiKeys
-                };
-                
-                console.log('📤 프론트엔드에서 보내는 데이터:', searchParams);
-                
-                const result = await callBackendAPI('search', searchParams);
-                
-                originalResults = result.data;
-                currentResults = [...originalResults];
-                
-                displayResults(currentResults);
-                updateStatus(`검색 완료 - ${currentResults.length}개 결과`);
+                if (isVideoSearch) {
+                    // 기존 영상 검색 로직
+                    updateStatus('검색 중...');
+                    
+                    const searchParams = {
+                        keyword: keyword,
+                        maxResults: parseInt(document.getElementById('maxResults').value),
+                        timeFrame: document.getElementById('timeFrame').value,
+                        regionCode: document.getElementById('regionCode').value,
+                        startDate: document.getElementById('startDate').value,
+                        endDate: document.getElementById('endDate').value,
+                        isViewsSort: isViewsSort,
+                        isAllVideos: isAllVideos,
+                        isVideoSearch: isVideoSearch,
+                        apiKeys: apiKeys
+                    };
+                    
+                    const result = await callBackendAPI('search', searchParams);
+                    
+                    originalResults = result.data;
+                    currentResults = [...originalResults];
+                    
+                    displayResults(currentResults);
+                    updateStatus(`검색 완료 - ${currentResults.length}개 결과`);
+                    
+                } else {
+                    // 채널 검색 로직
+                    updateStatus('채널 검색 중...');
+                    
+                    const result = await callBackendAPI('channelSearch', {
+                        channelName: keyword,
+                        regionCode: document.getElementById('regionCode').value,
+                        apiKeys: apiKeys
+                    });
+                    
+                    if (result.data && result.data.length > 0) {
+                        showChannelSelectionModal(result.data, keyword);
+                        updateStatus(`채널 검색 완료 - ${result.data.length}개 채널 발견`);
+                    } else {
+                        alert('검색된 채널이 없습니다.');
+                        updateStatus('채널 검색 결과 없음');
+                        showLoading(false);
+                    }
+                }
                 
             } catch (error) {
                 console.error('검색 오류:', error);
@@ -2235,6 +2257,131 @@
             }
         }
 
+        // 채널 선택 모달 표시
+        function showChannelSelectionModal(channels, searchKeyword) {
+            showLoading(false);
+            
+            // 기존 모달 제거
+            const existingModal = document.getElementById('channelSelectionModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            let channelsHtml = '';
+            channels.forEach((channel, index) => {
+                const subscriberText = channel.subscriberCount > 0 ? 
+                    `${channel.subscriberCount.toLocaleString()}명` : '비공개';
+                const videoText = channel.videoCount > 0 ? 
+                    `${channel.videoCount.toLocaleString()}개` : '0개';
+                
+                channelsHtml += `
+                    <div class="channel-item" onclick="selectChannel('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}')" 
+                        style="display: flex; align-items: center; padding: 12px; margin: 8px 0; background: ${channel.isExactMatch ? '#e8f5e8' : '#f9f9f9'}; 
+                                border-radius: 8px; cursor: pointer; border: 2px solid ${channel.isExactMatch ? '#4CAF50' : '#ddd'};">
+                        
+                        <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
+                            style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-right: 15px;"
+                            onerror="this.style.display='none'">
+                        
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; color: #333; font-size: 14px; margin-bottom: 4px;">
+                                ${channel.title}
+                                ${channel.isExactMatch ? '<span style="background: #4CAF50; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 8px;">정확일치</span>' : ''}
+                            </div>
+                            <div style="color: #666; font-size: 12px; line-height: 1.3;">
+                                구독자: ${subscriberText} | 동영상: ${videoText}
+                            </div>
+                            <div style="color: #888; font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${channel.description.substring(0, 80)}${channel.description.length > 80 ? '...' : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="color: #4CAF50; font-size: 12px; font-weight: bold;">
+                            선택 →
+                        </div>
+                    </div>
+                `;
+            });
+            
+            const modalHtml = `
+                <div class="settings-modal" id="channelSelectionModal" style="display: block;">
+                    <div class="settings-content" style="max-width: 600px; max-height: 80vh; overflow: hidden; background: white; color: #333;">
+                        <button class="close-btn" onclick="closeChannelSelectionModal()" style="color: #333;">&times;</button>
+                        
+                        <h3 style="margin-bottom: 20px; color: #2196F3; text-align: center;">
+                            📺 채널 선택
+                        </h3>
+                        
+                        <div style="margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-radius: 6px; text-align: center;">
+                            <strong>"${searchKeyword}"</strong> 검색 결과 - ${channels.length}개 채널
+                        </div>
+                        
+                        <div style="max-height: 400px; overflow-y: auto; padding: 0 5px;">
+                            ${channelsHtml}
+                        </div>
+                        
+                        <div style="margin-top: 15px; text-align: center; color: #666; font-size: 12px;">
+                            채널을 클릭하면 해당 채널의 영상을 수집합니다
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // 외부 클릭시 모달 닫기
+            document.getElementById('channelSelectionModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeChannelSelectionModal();
+                }
+            });
+        }
+
+        // 채널 선택 처리
+        async function selectChannel(channelId, channelTitle, uploadPlaylist) {
+            try {
+                closeChannelSelectionModal();
+                showLoading(true);
+                updateStatus(`채널 영상 수집 중... (${channelTitle})`);
+                
+                const maxResults = document.getElementById('maxResults').value;
+                
+                const result = await callBackendAPI('channelVideos', {
+                    channelId: channelId,
+                    uploadPlaylist: uploadPlaylist,
+                    maxResults: parseInt(maxResults),
+                    apiKeys: apiKeys
+                });
+                
+                if (result.data && result.data.length > 0) {
+                    originalResults = result.data;
+                    currentResults = [...originalResults];
+                    
+                    displayResults(currentResults);
+                    updateStatus(`채널 영상 수집 완료 - ${result.data.length}개 영상 (${channelTitle})`);
+                } else {
+                    alert('이 채널에서 영상을 찾을 수 없습니다.');
+                    updateStatus('채널 영상 없음');
+                    showLoading(false);
+                }
+                
+            } catch (error) {
+                console.error('채널 영상 수집 오류:', error);
+                alert('채널 영상을 수집하는 중 오류가 발생했습니다: ' + error.message);
+                updateStatus('채널 영상 수집 실패');
+                showLoading(false);
+            }
+        }
+
+        // 채널 선택 모달 닫기
+        function closeChannelSelectionModal() {
+            const modal = document.getElementById('channelSelectionModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        
         // URL 분석 함수
         async function analyzeYouTubeUrl() {
             if (!requireAuth('URL 분석')) return;
