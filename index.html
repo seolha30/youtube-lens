@@ -3025,6 +3025,53 @@
             window.open('https://www.youtube.com/watch?v=1HPv97VwHFM&feature=youtu.be', '_blank');
         }
 
+        // 국가 변경시 자동 번역 기능
+        function setupRegionChangeHandler() {
+            const regionSelect = document.getElementById('regionCode');
+            regionSelect.addEventListener('change', function() {
+                const selectedRegion = this.value;
+                const searchInput = document.getElementById('searchKeyword');
+                const currentSearchTerm = searchInput.value.trim();
+                
+                // 한국 선택시 자동 번역 건너뛰기
+                if (selectedRegion === 'KR') {
+                    console.log('한국 국가 설정 시 자동 번역을 건너뜁니다.');
+                    return;
+                }
+                
+                // 검색어가 있을 때만 번역 실행
+                if (currentSearchTerm) {
+                    translateSearchTerm(selectedRegion, currentSearchTerm);
+                }
+            });
+        }
+
+        // 검색어 번역 기능
+        async function translateSearchTerm(regionCode, searchTerm) {
+            if (!requireAuth('번역')) return;
+            
+            try {
+                updateStatus('검색어 번역 중...');
+                
+                const result = await callBackendAPI('translate', { 
+                    searchTerm: searchTerm,
+                    regionCode: regionCode
+                });
+                
+                if (result.data && result.data.translatedText) {
+                    const searchInput = document.getElementById('searchKeyword');
+                    searchInput.value = result.data.translatedText;
+                    updateStatus(`검색어 자동 번역됨: ${searchTerm} → ${result.data.translatedText}`);
+                } else {
+                    updateStatus('번역이 필요하지 않습니다');
+                }
+                
+            } catch (error) {
+                console.error('번역 오류:', error);
+                updateStatus('번역 실패');
+            }
+        }
+        
         // 초기화
         document.addEventListener('DOMContentLoaded', async function() {
             // 인증 시스템 초기화
