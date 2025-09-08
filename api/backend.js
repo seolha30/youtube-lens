@@ -257,7 +257,10 @@ async function handleChannelVideos(req, res) {
 async function handleChannelSearch(req, res) {
     const { channelName, regionCode, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
+    console.log('🔍 채널 검색 요청 받음:', { channelName, regionCode, apiKeysCount: apiKeys?.length });
+    
     if (!apiKeys || apiKeys.length === 0) {
+        console.log('❌ API 키 없음');
         return res.status(400).json({
             success: false,
             message: 'API 키가 필요합니다.'
@@ -265,16 +268,19 @@ async function handleChannelSearch(req, res) {
     }
     
     try {
+        console.log('🚀 searchChannelByName 호출 시작');
         const result = await searchChannelByName(channelName, regionCode || 'KR', apiKeys, parseInt(currentApiKeyIndex) || 0);
+        console.log('✅ searchChannelByName 완료:', result);
         
         res.status(200).json({
             success: true,
-            data: result.data,
-            message: `채널 검색 완료 - ${result.data.length}개 결과`,
+            data: result.data || result,
+            message: `채널 검색 완료 - ${(result.data || result).length}개 결과`,
             currentApiKeyIndex: result.currentApiKeyIndex || 0
         });
     } catch (error) {
-        console.error('채널 검색 오류:', error);
+        console.error('❌ 채널 검색 오류:', error);
+        console.error('❌ 오류 스택:', error.stack);
         res.status(500).json({
             success: false,
             message: error.message,
@@ -282,6 +288,7 @@ async function handleChannelSearch(req, res) {
         });
     }
 }
+
 
 
 // YouTube 검색 메인 함수 (test.html의 searchYouTubeVideos 완전 포팅)
