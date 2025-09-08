@@ -496,7 +496,7 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
             `key=APIKEY_PLACEHOLDER&` +
             `id=${videoIds}&` +
-            `part=snippet,statistics,contentDetails`;
+            `part=snippet,statistics,contentDetails,status`;
 
         console.log(`비디오 상세정보 API 호출 (배치 ${Math.floor(i/50) + 1})`);
         const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
@@ -599,7 +599,15 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
 
     // 크리에이티브 커먼즈 필터링
     if (!isAllVideos) {
-        results = results.filter(video => video.license === 'creativeCommon');
+        console.log('크리에이티브 커먼즈 필터 적용 전:', results.length);
+        results = results.filter(video => {
+            const isCreativeCommon = video.license === 'creativeCommon';
+            if (isCreativeCommon) {
+                console.log('크리에이티브 커먼즈 영상 발견:', video.title);
+            }
+            return isCreativeCommon;
+        });
+        console.log('크리에이티브 커먼즈 필터 적용 후:', results.length);
     }
 
     return results;
