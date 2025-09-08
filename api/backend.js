@@ -420,26 +420,14 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         }
     }
 
-    // YouTube Data API v3 검색 - Pagination 지원 추가
-    const apiMaxResults = Math.min(50, maxResults); // API 최대값은 50
-    const totalPagesNeeded = Math.ceil(maxResults / 50); // 필요한 페이지 수
-    
+    // YouTube Data API v3 검색 (test.html과 완전 동일)
     let searchUrl = `https://www.googleapis.com/youtube/v3/search?` +
         `key=APIKEY_PLACEHOLDER&` +
         `part=snippet&` +
         `type=${isVideoSearch ? 'video' : 'channel'}&` +
-        `maxResults=${apiMaxResults}&` +
+        `maxResults=${maxResults}&` +
+        `order=${sortBy}&` +
         `regionCode=${regionCode}`;
-    
-    // 영상 검색일 때만 추가 파라미터 적용
-    if (isVideoSearch) {
-        searchUrl += `&order=${sortBy}`;
-        
-        
-    } else {
-        // 채널 검색일 때는 relevance 정렬만 사용
-        searchUrl += `&order=relevance`;
-    }
     
     // 국가별 언어 코드 매핑 (test.html과 완전 동일)
     const languageMapping = {
@@ -481,39 +469,10 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         searchUrl += `&videoLicense=${videoLicense}`;
     }
 
-    // Pagination을 통한 다중 검색 실행
-    let allSearchItems = [];
-    let nextPageToken = null;
-    let currentPage = 0;
-    
-    while (currentPage < totalPagesNeeded && allSearchItems.length < maxResults) {
-        let currentSearchUrl = searchUrl;
-        if (nextPageToken) {
-            currentSearchUrl += `&pageToken=${nextPageToken}`;
-        }
-        
-        const { response: searchResponse, data: searchData } = await makeApiRequest(currentSearchUrl);
-        
-        if (searchData.items && searchData.items.length > 0) {
-            allSearchItems = allSearchItems.concat(searchData.items);
-            nextPageToken = searchData.nextPageToken;
-        }
-        
-        // 다음 페이지가 없거나 원하는 수량에 도달하면 중단
-        if (!nextPageToken || allSearchItems.length >= maxResults) {
-            break;
-        }
-        
-        currentPage++;
-    }
-    
-    // 정확히 원하는 수량만큼 자르기
-    allSearchItems = allSearchItems.slice(0, maxResults);
-    
-    console.log(`총 ${allSearchItems.length}개 영상 검색 완료 (요청: ${maxResults}개)`);
+    const { response: searchResponse, data: searchData } = await makeApiRequest(searchUrl);
 
-    // 비디오 상세 정보 가져오기 (검색된 모든 아이템 처리)
-    const videoIds = allSearchItems.map(item => item.id.videoId).join(',');
+    // 비디오 상세 정보 가져오기 (test.html과 동일)
+    const videoIds = searchData.items.map(item => item.id.videoId).join(',');
     const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
         `key=APIKEY_PLACEHOLDER&` +
         `id=${videoIds}&` +
@@ -1131,43 +1090,16 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         
         const channelInfo = channelData.items[0];
         
-        // 업로드 플레이리스트에서 영상 목록 가져오기 (Pagination 지원)
-        const apiMaxResults = Math.min(50, maxResults);
-        const totalPagesNeeded = Math.ceil(maxResults / 50);
+        // 업로드 플레이리스트에서 영상 목록 가져오기
+        const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `part=snippet&` +
+            `playlistId=${uploadPlaylist}&` +
+            `maxResults=${maxResults}`;
         
-        let allVideos = [];
-        let nextPageToken = null;
-        let currentPage = 0;
-        
-        while (currentPage < totalPagesNeeded && allVideos.length < maxResults) {
-            let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
-                `key=APIKEY_PLACEHOLDER&` +
-                `part=snippet&` +
-                `playlistId=${uploadPlaylist}&` +
-                `maxResults=${apiMaxResults}`;
-            
-            if (nextPageToken) {
-                playlistUrl += `&pageToken=${nextPageToken}`;
-            }
-            
-            console.log(`플레이리스트 영상 목록 API 호출 (페이지 ${currentPage + 1})`);
-            const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
-            
-            if (playlistData.items && playlistData.items.length > 0) {
-                allVideos = allVideos.concat(playlistData.items);
-                nextPageToken = playlistData.nextPageToken;
-            }
-            
-            if (!nextPageToken || allVideos.length >= maxResults) {
-                break;
-            }
-            
-            currentPage++;
-        }
-        
-        // 정확히 원하는 수량만큼 자르기
-        const videos = allVideos.slice(0, maxResults);
-        console.log(`총 ${videos.length}개 영상 수집 완료 (요청: ${maxResults}개)`);
+        console.log('플레이리스트 영상 목록 API 호출');
+        const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
+        const videos = playlistData.items || [];
         
         if (videos.length === 0) {
             console.log('플레이리스트에 영상이 없음');
