@@ -2953,7 +2953,13 @@
                 const maxResults = document.getElementById('maxResults').value;
                 
                 // 채널 영상 가져오기
-                const channelVideos = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults));
+                const result = await callBackendAPI('channelVideos', {
+                    channelId: channelId,
+                    uploadPlaylist: uploadPlaylist,
+                    maxResults: parseInt(maxResults),
+                    apiKeys: apiKeys
+                });
+                const channelVideos = result.data;
                 
                 if (channelVideos.length === 0) {
                     alert('이 채널에서 영상을 찾을 수 없습니다.');
