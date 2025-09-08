@@ -236,7 +236,7 @@ async function handleChannelVideos(req, res) {
     }
     
     try {
-        const result = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults) || 50, apiKeys, parseInt(currentApiKeyIndex) || 0);
+        const result = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults), apiKeys, parseInt(currentApiKeyIndex) || 0);
         
         res.status(200).json({
             success: true,
