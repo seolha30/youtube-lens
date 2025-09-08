@@ -226,6 +226,8 @@ async function handleChannelInfo(req, res) {
 async function handleChannelVideos(req, res) {
     const { channelId, uploadPlaylist, maxResults, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
+    console.log('채널 영상 수집 요청:', { channelId, uploadPlaylist, maxResults });
+    
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
             success: false,
@@ -251,6 +253,7 @@ async function handleChannelVideos(req, res) {
         });
     }
 }
+
 
 
 // 채널 검색 처리 함수 (test.html의 searchChannelByName 완전 포팅)
@@ -1010,22 +1013,32 @@ async function fetchDetailedChannelInfo(channelId, apiKeys) {
 }
 
 // 채널 영상 수집 함수 (test.html의 fetchChannelVideos 완전 포팅)
-async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys) {
-    let currentApiIndex = 0;
+async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys, startApiKeyIndex = 0) {
+    let currentApiIndex = startApiKeyIndex;
+    
+    console.log('채널 영상 수집 시작:', { channelId, uploadPlaylist, maxResults });
     
     function getCurrentApiKey() {
-        if (apiKeys.length === 0) return null;
+        if (!apiKeys || apiKeys.length === 0) return null;
         if (currentApiIndex >= apiKeys.length) currentApiIndex = 0;
         return apiKeys[currentApiIndex];
     }
     
     function rotateToNextApiKey() {
-        if (apiKeys.length <= 1) return false;
+        if (!apiKeys || apiKeys.length <= 1) return false;
         currentApiIndex = (currentApiIndex + 1) % apiKeys.length;
         return true;
     }
 
-    async function makeApiRequest(url, maxRetries = apiKeys.length) {
+    async function makeApiRequest(url, maxRetries = null) {
+        if (maxRetries === null) {
+            maxRetries = apiKeys ? apiKeys.length : 1;
+        }
+        
+        if (!apiKeys || apiKeys.length === 0) {
+            throw new Error('사용 가능한 API 키가 없습니다.');
+        }
+        
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const currentKey = getCurrentApiKey();
             if (!currentKey) {
@@ -1057,116 +1070,137 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
                 rotateToNextApiKey();
             }
         }
-    }
-    
-    // 채널 기본 정보 가져오기
-    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `part=snippet,statistics&` +
-        `id=${channelId}`;
-    
-    const { response: channelResponse, data: channelData } = await makeApiRequest(channelUrl);
-    
-    if (!channelData.items || channelData.items.length === 0) {
-        return [];
-    }
-    
-    const channelInfo = channelData.items[0];
-    
-    // 업로드 플레이리스트에서 영상 목록 가져오기
-    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `part=snippet&` +
-        `playlistId=${uploadPlaylist}&` +
-        `maxResults=${maxResults}`;
-    
-    const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
-    const videos = playlistData.items || [];
-    
-    if (videos.length === 0) {
-        return [];
-    }
-    
-    // 비디오 상세 정보 가져오기
-    const videoIds = videos.map(item => item.snippet.resourceId.videoId).join(',');
-    const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
-        `key=APIKEY_PLACEHOLDER&` +
-        `id=${videoIds}&` +
-        `part=snippet,statistics,contentDetails`;
-    
-    const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
-    const videoDetails = videosData.items || [];
-    
-    // 비디오 데이터 매핑
-    const videosMap = {};
-    videoDetails.forEach(video => {
-        videosMap[video.id] = video;
-    });
-    
-    // 결과 조합 (test.html과 동일한 로직)
-    const results = [];
-    videos.forEach((item, index) => {
-        const videoId = item.snippet.resourceId.videoId;
-        const videoInfo = videosMap[videoId];
         
-        if (videoInfo) {
-            const subscriberCount = parseInt(channelInfo.statistics?.subscriberCount || 0);
-            const viewCount = parseInt(videoInfo.statistics?.viewCount || 0);
-            const likeCount = parseInt(videoInfo.statistics?.likeCount || 0);
-            const commentCount = parseInt(videoInfo.statistics?.commentCount || 0);
-
-            // CII 점수 계산 (test.html과 동일)
-            const channelTotalViewCount = parseInt(channelInfo.statistics?.viewCount || 0);
-            const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
-            const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
-            const ciiScore = (contributionValue * 0.7) + (performanceValue * 30);
-
-            let cii = 'Bad';
-            if (ciiScore >= 70) cii = 'Great!!';
-            else if (ciiScore >= 50) cii = 'Good';
-            else if (ciiScore >= 30) cii = 'Soso';
-            else if (ciiScore >= 10) cii = 'Not bad';
-            
-            // 쇼츠 여부 판단 (test.html과 동일)
-            const durationParts = videoInfo.contentDetails?.duration?.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-            let totalSeconds = 0;
-            if (durationParts) {
-                const hours = durationParts[1] ? parseInt(durationParts[1].replace('H', '')) : 0;
-                const minutes = durationParts[2] ? parseInt(durationParts[2].replace('M', '')) : 0;
-                const seconds = durationParts[3] ? parseInt(durationParts[3].replace('S', '')) : 0;
-                totalSeconds = hours * 3600 + minutes * 60 + seconds;
-            }
-            const isShorts = totalSeconds <= 60;
-
-            results.push({
-                index: index + 1,
-                thumbnail: videoInfo.snippet?.thumbnails?.default?.url || '',
-                title: videoInfo.snippet?.title || '',
-                channelTitle: channelInfo.snippet?.title || '',
-                channelId: channelId,
-                duration: formatDuration(videoInfo.contentDetails?.duration || ''),
-                publishedAt: formatDate(videoInfo.snippet?.publishedAt || ''),
-                publishedAtRaw: videoInfo.snippet?.publishedAt || '',
-                subscriberCount: subscriberCount,
-                viewCount: viewCount,
-                contributionValue: parseFloat(contributionValue.toFixed(2)),
-                performanceValue: parseFloat(performanceValue.toFixed(2)),
-                cii: cii,
-                ciiScore: parseFloat(ciiScore.toFixed(1)),
-                commentCount: commentCount,
-                likeCount: likeCount,
-                totalVideos: parseInt(channelInfo.statistics?.videoCount || 0),
-                videoId: videoId,
-                license: videoInfo.status?.license || 'youtube',
-                isShorts: isShorts,
-                engagementRate: viewCount > 0 ? parseFloat(((likeCount + commentCount) / viewCount * 100).toFixed(1)) : 0,
-                description: videoInfo.snippet?.description || ''
-            });
-        }
-    });
+        throw new Error('모든 API 키 시도 실패');
+    }
     
-    return results;
+    try {
+        // 채널 기본 정보 가져오기
+        const channelUrl = `https://www.googleapis.com/youtube/v3/channels?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `part=snippet,statistics&` +
+            `id=${channelId}`;
+        
+        console.log('채널 정보 API 호출');
+        const { response: channelResponse, data: channelData } = await makeApiRequest(channelUrl);
+        
+        if (!channelData.items || channelData.items.length === 0) {
+            throw new Error('채널을 찾을 수 없습니다.');
+        }
+        
+        const channelInfo = channelData.items[0];
+        
+        // 업로드 플레이리스트에서 영상 목록 가져오기
+        const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `part=snippet&` +
+            `playlistId=${uploadPlaylist}&` +
+            `maxResults=${maxResults}`;
+        
+        console.log('플레이리스트 영상 목록 API 호출');
+        const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
+        const videos = playlistData.items || [];
+        
+        if (videos.length === 0) {
+            console.log('플레이리스트에 영상이 없음');
+            return { data: [], currentApiKeyIndex: currentApiIndex };
+        }
+        
+        // 비디오 상세 정보 가져오기
+        const videoIds = videos.map(item => item.snippet?.resourceId?.videoId).filter(id => id).join(',');
+        if (!videoIds) {
+            console.log('유효한 비디오 ID가 없음');
+            return { data: [], currentApiKeyIndex: currentApiIndex };
+        }
+        
+        const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` +
+            `key=APIKEY_PLACEHOLDER&` +
+            `id=${videoIds}&` +
+            `part=snippet,statistics,contentDetails`;
+        
+        console.log('비디오 상세정보 API 호출');
+        const { response: videosResponse, data: videosData } = await makeApiRequest(videosUrl);
+        const videoDetails = videosData.items || [];
+        
+        // 비디오 데이터 매핑
+        const videosMap = {};
+        videoDetails.forEach(video => {
+            if (video && video.id) {
+                videosMap[video.id] = video;
+            }
+        });
+        
+        // 결과 조합
+        const results = [];
+        videos.forEach((item, index) => {
+            const videoId = item.snippet?.resourceId?.videoId;
+            const videoInfo = videosMap[videoId];
+            
+            if (videoInfo) {
+                const subscriberCount = parseInt(channelInfo.statistics?.subscriberCount || 0);
+                const viewCount = parseInt(videoInfo.statistics?.viewCount || 0);
+                const likeCount = parseInt(videoInfo.statistics?.likeCount || 0);
+                const commentCount = parseInt(videoInfo.statistics?.commentCount || 0);
+
+                // CII 점수 계산
+                const channelTotalViewCount = parseInt(channelInfo.statistics?.viewCount || 0);
+                const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
+                const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
+                const ciiScore = (contributionValue * 0.7) + (performanceValue * 30);
+
+                let cii = 'Bad';
+                if (ciiScore >= 70) cii = 'Great!!';
+                else if (ciiScore >= 50) cii = 'Good';
+                else if (ciiScore >= 30) cii = 'Soso';
+                else if (ciiScore >= 10) cii = 'Not bad';
+                
+                // 쇼츠 여부 판단
+                const durationParts = videoInfo.contentDetails?.duration?.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+                let totalSeconds = 0;
+                if (durationParts) {
+                    const hours = durationParts[1] ? parseInt(durationParts[1].replace('H', '')) : 0;
+                    const minutes = durationParts[2] ? parseInt(durationParts[2].replace('M', '')) : 0;
+                    const seconds = durationParts[3] ? parseInt(durationParts[3].replace('S', '')) : 0;
+                    totalSeconds = hours * 3600 + minutes * 60 + seconds;
+                }
+                const isShorts = totalSeconds <= 60;
+
+                results.push({
+                    index: index + 1,
+                    thumbnail: videoInfo.snippet?.thumbnails?.default?.url || '',
+                    title: videoInfo.snippet?.title || '',
+                    channelTitle: channelInfo.snippet?.title || '',
+                    channelId: channelId,
+                    duration: formatDuration(videoInfo.contentDetails?.duration || ''),
+                    publishedAt: formatDate(videoInfo.snippet?.publishedAt || ''),
+                    publishedAtRaw: videoInfo.snippet?.publishedAt || '',
+                    subscriberCount: subscriberCount,
+                    viewCount: viewCount,
+                    contributionValue: parseFloat(contributionValue.toFixed(2)),
+                    performanceValue: parseFloat(performanceValue.toFixed(2)),
+                    cii: cii,
+                    ciiScore: parseFloat(ciiScore.toFixed(1)),
+                    commentCount: commentCount,
+                    likeCount: likeCount,
+                    totalVideos: parseInt(channelInfo.statistics?.videoCount || 0),
+                    videoId: videoId,
+                    license: videoInfo.status?.license || 'youtube',
+                    isShorts: isShorts,
+                    engagementRate: viewCount > 0 ? parseFloat(((likeCount + commentCount) / viewCount * 100).toFixed(1)) : 0,
+                    description: videoInfo.snippet?.description || ''
+                });
+            }
+        });
+        
+        console.log('채널 영상 수집 완료:', results.length);
+        return { data: results, currentApiKeyIndex: currentApiIndex };
+        
+    } catch (error) {
+        console.error('채널 영상 수집 전체 오류:', error);
+        throw error;
+    }
 }
+
 
 // 채널 검색 함수 (test.html의 searchChannelByName 완전 포팅)
 // 채널 검색 함수 (test.html의 searchChannelByName 완전 포팅)
