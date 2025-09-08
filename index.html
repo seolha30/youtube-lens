@@ -2089,7 +2089,8 @@
                     body: JSON.stringify({
                         action: action,
                         ...data,
-                        apiKeys: apiKeys
+                        apiKeys: apiKeys,
+                        currentApiKeyIndex: currentApiKeyIndex  // 현재 인덱스 전달
                     })
                 });
 
@@ -2097,6 +2098,15 @@
                 
                 if (!result.success) {
                     throw new Error(result.message || 'API 요청 실패');
+                }
+                
+                // 백엔드에서 로테이션이 발생했으면 프론트엔드 인덱스 동기화
+                if (typeof result.currentApiKeyIndex === 'number' && 
+                    result.currentApiKeyIndex !== currentApiKeyIndex) {
+                    console.log(`🔄 API 키 인덱스 동기화: ${currentApiKeyIndex} → ${result.currentApiKeyIndex}`);
+                    currentApiKeyIndex = result.currentApiKeyIndex;
+                    localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
+                    updateApiKeysList(); // UI 업데이트
                 }
                 
                 return result;
