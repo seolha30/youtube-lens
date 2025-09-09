@@ -2491,13 +2491,54 @@
         
         // 초기 인증 상태 확인
         async function initializeAuth() {
-            
-            
             // API 키 초기화 먼저 수행
             initializeApiKeys();
             
-            // 새로운 인증 시스템에서는 별도 초기화 불필요
-            // 사용자가 직접 인증 모달에서 인증을 진행
+            // 저장된 세션 확인
+            const savedSessionStart = localStorage.getItem('sessionStartTime');
+            const savedAuthStatus = localStorage.getItem('userAuthenticated');
+            
+            if (savedSessionStart && savedAuthStatus === 'true') {
+                const savedStartTime = parseInt(savedSessionStart);
+                const currentTime = Date.now();
+                const elapsed = currentTime - savedStartTime;
+                
+                // 세션이 아직 유효한지 확인
+                if (elapsed < sessionDuration) {
+                    // 세션 복원
+                    sessionStartTime = savedStartTime;
+                    userAuthenticated = true;
+                    
+                    // 인증 모달 숨기기
+                    const authModal = document.getElementById('authModal');
+                    if (authModal) {
+                        authModal.style.display = 'none';
+                    }
+                    
+                    // 로그아웃 섹션 표시
+                    const logoutSection = document.getElementById('logoutSection');
+                    if (logoutSection) {
+                        logoutSection.style.display = 'flex';
+                    }
+                    
+                    // 세션 타이머 시작
+                    if (sessionTimer) {
+                        clearInterval(sessionTimer);
+                    }
+                    sessionTimer = setInterval(updateSessionTimer, 1000);
+                    updateSessionTimer();
+                    
+                    updateStatus('세션 복원됨 - YouTube Lens 사용 준비됨');
+                } else {
+                    // 세션 만료됨
+                    localStorage.removeItem('sessionStartTime');
+                    localStorage.removeItem('userAuthenticated');
+                    updateStatus('세션이 만료되었습니다. 다시 인증해 주세요.');
+                }
+            } else {
+                // 저장된 세션 없음
+                updateStatus('준비 완료 - 인증키를 입력하세요');
+            }
         }
 
         
@@ -4400,6 +4441,11 @@
             
             // 세션 시작
             sessionStartTime = Date.now();
+            userAuthenticated = true;
+            
+            // 세션 정보를 localStorage에 저장
+            localStorage.setItem('sessionStartTime', sessionStartTime.toString());
+            localStorage.setItem('userAuthenticated', 'true');
             
             // 로그아웃 섹션 표시
             const logoutSection = document.getElementById('logoutSection');
@@ -4483,6 +4529,10 @@
             sessionStartTime = null;
             logoutWarningShown = false;
             userAuthenticated = false;
+            
+            // localStorage에서 세션 정보 삭제
+            localStorage.removeItem('sessionStartTime');
+            localStorage.removeItem('userAuthenticated');
             
             // 로그아웃 섹션 숨기기
             const logoutSection = document.getElementById('logoutSection');
