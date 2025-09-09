@@ -3949,8 +3949,19 @@
             addTableHeaderEvents();
             loadColumnSettings();
             
-            // 문서 클릭 시 컨텍스트 메뉴 숨기기
-            document.addEventListener('click', hideContextMenu);
+            // 문서 클릭 시 컨텍스트 메뉴 숨기기 (메뉴 자체 클릭은 제외)
+            document.addEventListener('click', function(e) {
+                if (contextMenu && !contextMenu.contains(e.target)) {
+                    hideContextMenu();
+                }
+            });
+
+            // ESC 키로도 메뉴 닫기
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideContextMenu();
+                }
+            });
         });
         
         // 테이블 헤더 이벤트 추가 함수
@@ -4217,19 +4228,74 @@
             
             // 메뉴 항목 클릭 이벤트 추가
             contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
-                item.addEventListener('click', function() {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 이벤트 버블링 방지
+                    
                     const action = this.dataset.action;
                     
                     if (action === 'select-all') {
                         toggleAllColumns(true);
-                        showColumnVisibilityMenu(e); // 메뉴 새로고침
+                        updateColumnMenu(); // 메뉴 새로고침만 (위치 유지)
                     } else if (action === 'deselect-all') {
                         toggleAllColumns(false);
-                        showColumnVisibilityMenu(e); // 메뉴 새로고침
+                        updateColumnMenu(); // 메뉴 새로고침만 (위치 유지)
                     } else if (action === 'toggle-column') {
                         const columnIndex = parseInt(this.dataset.column);
                         toggleColumnVisibility(columnIndex);
-                        showColumnVisibilityMenu(e); // 메뉴 새로고침
+                        updateColumnMenu(); // 메뉴 새로고침만 (위치 유지)
+                    }
+                });
+            });
+        }
+
+        // 메뉴 내용만 업데이트하는 함수 (위치는 유지)
+        function updateColumnMenu() {
+            if (!contextMenu || contextMenu.style.display === 'none') return;
+            
+            // 현재 메뉴 내용만 업데이트
+            let menuItems = [];
+            
+            // 메뉴 헤더
+            menuItems.push('<div class="context-menu-header">컬럼 표시/숨김</div>');
+            
+            // 전체 선택/해제 옵션
+            menuItems.push('<div class="context-menu-item" data-action="select-all">전체 선택</div>');
+            menuItems.push('<div class="context-menu-item" data-action="deselect-all">전체 해제</div>');
+            menuItems.push('<div class="context-menu-separator"></div>');
+            
+            // 개별 컬럼 체크박스 (N열 제외)
+            const headers = ['썸네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
+            
+            headers.forEach((headerText, index) => {
+                const columnIndex = index + 1; // N열(0)을 제외하므로 +1
+                const table = document.getElementById('resultsTable');
+                const isVisible = table.querySelector(`th:nth-child(${columnIndex + 1})`).style.display !== 'none';
+                const checkIcon = isVisible ? '✅' : '⬜';
+                
+                menuItems.push(`<div class="context-menu-item column-toggle" data-action="toggle-column" data-column="${columnIndex}">
+                    <span class="check-icon">${checkIcon}</span> ${headerText}
+                </div>`);
+            });
+            
+            contextMenu.innerHTML = menuItems.join('');
+            
+            // 이벤트 리스너 다시 추가
+            contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 이벤트 버블링 방지
+                    
+                    const action = this.dataset.action;
+                    
+                    if (action === 'select-all') {
+                        toggleAllColumns(true);
+                        updateColumnMenu();
+                    } else if (action === 'deselect-all') {
+                        toggleAllColumns(false);
+                        updateColumnMenu();
+                    } else if (action === 'toggle-column') {
+                        const columnIndex = parseInt(this.dataset.column);
+                        toggleColumnVisibility(columnIndex);
+                        updateColumnMenu();
                     }
                 });
             });
