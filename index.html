@@ -1215,6 +1215,33 @@
         input::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
         input::-moz-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
         input:-ms-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
+
+        .auth-status-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auth-timer {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-btn.logout {
+            background: rgba(255, 152, 0, 0.3);
+            border-color: rgba(255, 152, 0, 0.5);
+        }
+
+        .header-btn.logout:hover {
+            background: rgba(255, 152, 0, 0.4);
+            border-color: rgba(255, 152, 0, 0.7);
+        }
     </style>
 </head>
 <body>
@@ -1236,7 +1263,13 @@
                 </a>
                 <a href="https://tubelens-0o0opqa.gamma.site/" target="_blank" class="header-btn home">
                     🏠 튜브렌즈 HOME
-                </a>                
+                </a>
+                
+                <!-- 인증 상태 표시 영역 -->
+                <div class="auth-status-area" id="authStatusArea" style="display: none;">
+                    <div class="auth-timer" id="authTimer">남은시간: --:--</div>
+                    <button class="header-btn logout" onclick="logout()">로그아웃</button>
+                </div>
             </div>
         </div>
     </div>
@@ -2218,13 +2251,26 @@
         
         // 초기 인증 상태 확인
         async function initializeAuth() {
-            
-            
-            // API 키 초기화 먼저 수행
             initializeApiKeys();
             
-            // 새로운 인증 시스템에서는 별도 초기화 불필요
-            // 사용자가 직접 인증 모달에서 인증을 진행
+            const savedLicenseKey = localStorage.getItem('licenseKey');
+            const savedAuthResult = localStorage.getItem('authResult');
+            const authTimestamp = localStorage.getItem('authTimestamp');
+            
+            if (savedLicenseKey && savedAuthResult && authTimestamp) {
+                const timeDiff = Date.now() - parseInt(authTimestamp);
+                if (timeDiff < 3600000) { // 1시간
+                    const authResult = JSON.parse(savedAuthResult);
+                    if (authResult.valid) {
+                        userAuthenticated = true;
+                        document.getElementById('authModal').style.display = 'none';
+                        return;
+                    }
+                }
+            }
+            
+            // 인증이 필요한 경우 모달 표시
+            document.getElementById('authModal').style.display = 'block';
         }
 
         
@@ -4111,6 +4157,53 @@
                 addApiKey();
             }
         });
+
+        // 인증 상태 표시 및 타이머 시작
+        function showAuthStatus() {
+            const authTimestamp = localStorage.getItem('authTimestamp');
+            if (authTimestamp) {
+                document.getElementById('authStatusArea').style.display = 'flex';
+                startAuthTimer();
+            }
+        }
+
+        // 인증 타이머 시작
+        function startAuthTimer() {
+            const authTimestamp = localStorage.getItem('authTimestamp');
+            if (!authTimestamp) return;
+            
+            const interval = setInterval(() => {
+                const timeDiff = Date.now() - parseInt(authTimestamp);
+                const remainingTime = 3600000 - timeDiff; // 1시간 - 경과시간
+                
+                if (remainingTime <= 0) {
+                    clearInterval(interval);
+                    logout();
+                    return;
+                }
+                
+                const minutes = Math.floor(remainingTime / 60000);
+                const seconds = Math.floor((remainingTime % 60000) / 1000);
+                
+                document.getElementById('authTimer').textContent = 
+                    `남은시간: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // 로그아웃 함수
+        function logout() {
+            localStorage.removeItem('licenseKey');
+            localStorage.removeItem('authResult');
+            localStorage.removeItem('authTimestamp');
+            localStorage.removeItem('userType');
+            
+            userAuthenticated = false;
+            document.getElementById('authStatusArea').style.display = 'none';
+            document.getElementById('authModal').style.display = 'block';
+            
+            clearResults();
+            updateStatus('로그아웃되었습니다');
+        }
 
         // 모달 외부 클릭 시 닫기
         document.getElementById('settingsModal').addEventListener('click', function(e) {
