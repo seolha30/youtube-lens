@@ -1093,6 +1093,24 @@
             font-weight: bold;
         }
 
+        .context-menu-separator {
+            height: 1px;
+            background: #eee;
+            margin: 5px 0;
+        }
+
+        .column-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .check-icon {
+            font-size: 14px;
+            width: 20px;
+            text-align: center;
+        }
+
         .context-menu-header {
             padding: 6px 12px;
             background: #f8f9fa;
@@ -3929,6 +3947,7 @@
             
             // 테이블 헤더 우클릭 이벤트 리스너 추가
             addTableHeaderEvents();
+            loadColumnSettings();
             
             // 문서 클릭 시 컨텍스트 메뉴 숨기기
             document.addEventListener('click', hideContextMenu);
@@ -3957,18 +3976,25 @@
         // 헤더 이벤트 설정 함수
         function setupHeaderEvents() {
             const headers = document.querySelectorAll('#resultsTable th[data-sort]');
-            headers.forEach(header => {
+            headers.forEach((header, index) => {
                 // 기존 이벤트 리스너 제거 (중복 방지)
                 const newHeader = header.cloneNode(true);
                 header.parentNode.replaceChild(newHeader, header);
                 
                 // 우클릭 이벤트 추가
                 newHeader.addEventListener('contextmenu', function(e) {
-                    const sortField = this.dataset.sort;
-                    const sortType = this.dataset.sortType;
+                    e.preventDefault();
                     
-                    if (sortField && sortType) {
-                        showContextMenu(e, { sortField, sortType });
+                    // N열(첫 번째 열)인지 확인
+                    if (index === 0) {
+                        showColumnVisibilityMenu(e);
+                    } else {
+                        const sortField = this.dataset.sort;
+                        const sortType = this.dataset.sortType;
+                        
+                        if (sortField && sortType) {
+                            showContextMenu(e, { sortField, sortType });
+                        }
                     }
                 });
                 
@@ -4147,6 +4173,153 @@
             const modal = document.getElementById('subtitleModal');
             if (modal) {
                 modal.remove();
+            }
+        }
+
+        // 컬럼 표시/숨김 메뉴 표시
+        function showColumnVisibilityMenu(e) {
+            if (!contextMenu) {
+                contextMenu = document.getElementById('contextMenu');
+            }
+            
+            let menuItems = [];
+            
+            // 메뉴 헤더
+            menuItems.push('<div class="context-menu-header">컬럼 표시/숨김</div>');
+            
+            // 전체 선택/해제 옵션
+            menuItems.push('<div class="context-menu-item" data-action="select-all">전체 선택</div>');
+            menuItems.push('<div class="context-menu-item" data-action="deselect-all">전체 해제</div>');
+            menuItems.push('<div class="context-menu-separator"></div>');
+            
+            // 개별 컬럼 체크박스 (N열 제외)
+            const headers = ['인네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
+            
+            headers.forEach((headerText, index) => {
+                const columnIndex = index + 1; // N열(0)을 제외하므로 +1
+                const table = document.getElementById('resultsTable');
+                const isVisible = table.querySelector(`th:nth-child(${columnIndex + 1})`).style.display !== 'none';
+                const checkIcon = isVisible ? '✅' : '⬜';
+                
+                menuItems.push(`<div class="context-menu-item column-toggle" data-action="toggle-column" data-column="${columnIndex}">
+                    <span class="check-icon">${checkIcon}</span> ${headerText}
+                </div>`);
+            });
+            
+            contextMenu.innerHTML = menuItems.join('');
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = e.pageX + 'px';
+            contextMenu.style.top = e.pageY + 'px';
+            
+            // 메뉴 항목 클릭 이벤트 추가
+            contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const action = this.dataset.action;
+                    
+                    if (action === 'select-all') {
+                        toggleAllColumns(true);
+                        showColumnVisibilityMenu(e); // 메뉴 새로고침
+                    } else if (action === 'deselect-all') {
+                        toggleAllColumns(false);
+                        showColumnVisibilityMenu(e); // 메뉴 새로고침
+                    } else if (action === 'toggle-column') {
+                        const columnIndex = parseInt(this.dataset.column);
+                        toggleColumnVisibility(columnIndex);
+                        showColumnVisibilityMenu(e); // 메뉴 새로고침
+                    }
+                });
+            });
+        }
+
+        // 개별 컬럼 표시/숨김 토글
+        function toggleColumnVisibility(columnIndex) {
+            const table = document.getElementById('resultsTable');
+            const headerCells = table.querySelectorAll(`th:nth-child(${columnIndex + 1})`);
+            const bodyCells = table.querySelectorAll(`td:nth-child(${columnIndex + 1})`);
+            
+            const isCurrentlyVisible = headerCells[0].style.display !== 'none';
+            const newDisplay = isCurrentlyVisible ? 'none' : '';
+            
+            // 헤더 숨김/표시
+            headerCells.forEach(cell => {
+                cell.style.display = newDisplay;
+            });
+            
+            // 바디 셀 숨김/표시  
+            bodyCells.forEach(cell => {
+                cell.style.display = newDisplay;
+            });
+            
+            saveColumnSettings();
+        }
+
+        // 전체 컬럼 표시/숨김
+        function toggleAllColumns(show) {
+            const table = document.getElementById('resultsTable');
+            const headers = ['인네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
+            
+            headers.forEach((headerText, index) => {
+                const columnIndex = index + 1; // N열(0) 제외
+                const headerCells = table.querySelectorAll(`th:nth-child(${columnIndex + 1})`);
+                const bodyCells = table.querySelectorAll(`td:nth-child(${columnIndex + 1})`);
+                
+                const newDisplay = show ? '' : 'none';
+                
+                headerCells.forEach(cell => {
+                    cell.style.display = newDisplay;
+                });
+                
+                bodyCells.forEach(cell => {
+                    cell.style.display = newDisplay;
+                });
+            });
+            
+            saveColumnSettings();
+        }
+
+        // 컬럼 설정 저장
+        function saveColumnSettings() {
+            const settings = {};
+            const table = document.getElementById('resultsTable');
+            const headerRow = table.querySelector('thead tr');
+            
+            if (headerRow) {
+                const headers = headerRow.querySelectorAll('th');
+                headers.forEach((header, index) => {
+                    settings[index] = header.style.display !== 'none';
+                });
+                
+                localStorage.setItem('column_visibility_settings', JSON.stringify(settings));
+            }
+        }
+
+        // 컬럼 설정 로드
+        function loadColumnSettings() {
+            try {
+                const savedSettings = localStorage.getItem('column_visibility_settings');
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    const table = document.getElementById('resultsTable');
+                    
+                    Object.keys(settings).forEach(columnIndex => {
+                        const index = parseInt(columnIndex);
+                        const isVisible = settings[columnIndex];
+                        const headerCells = table.querySelectorAll(`th:nth-child(${index + 1})`);
+                        const bodyCells = table.querySelectorAll(`td:nth-child(${index + 1})`);
+                        
+                        const display = isVisible ? '' : 'none';
+                        
+                        headerCells.forEach(cell => {
+                            cell.style.display = display;
+                        });
+                        
+                        bodyCells.forEach(cell => {
+                            cell.style.display = display;
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('컬럼 설정 로드 실패:', error);
             }
         }
         
