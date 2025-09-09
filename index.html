@@ -1483,19 +1483,20 @@
                 <div class="auth-info">유료 사용자 인증 정보를 입력해주세요</div>
                 <div id="paidError" class="error-message" style="display: none; background: rgba(255, 255, 255, 0.9); border: 2px solid #ff4444; color: #cc0000; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; font-weight: 600;"></div>
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">이름</label>
-                    <input type="text" id="paidName" placeholder="결제시 입력한 이름" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">이름</label>
+                        <input type="text" id="paidName" placeholder="결제시 입력한 이름" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">연락처</label>
+                        <input type="tel" id="paidPhone" placeholder="010-0000-0000" maxlength="13" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                    </div>
                 </div>
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">연락처</label>
-                    <input type="tel" id="paidPhone" placeholder="010-0000-0000" maxlength="13" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">인증키</label>
-                    <input type="text" id="paidLicense" placeholder="인증키를 입력하세요" maxlength="30" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">인증키</label>
+                    <input type="text" id="paidLicense" placeholder="인증키를 입력하세요" maxlength="30" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
                 </div>
                 
                 <button class="btn auth-btn" id="paidAuthBtn">🚀 인증하기</button>
@@ -1507,19 +1508,20 @@
                 <div class="auth-info">무료 사용자 인증 정보를 입력해주세요</div>
                 <div id="freeError" class="error-message" style="display: none; background: rgba(255, 255, 255, 0.9); border: 2px solid #ff4444; color: #cc0000; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; font-weight: 600;"></div>
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">이름</label>
-                    <input type="text" id="freeName" placeholder="신청시 입력한 이름" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">이름</label>
+                        <input type="text" id="freeName" placeholder="신청시 입력한 이름" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">이메일</label>
+                        <input type="email" id="freeEmail" placeholder="example@gmail.com" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                    </div>
                 </div>
                 
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">이메일</label>
-                    <input type="email" id="freeEmail" placeholder="example@gmail.com" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">인증키</label>
-                    <input type="text" id="freeLicense" placeholder="인증키를 입력하세요" maxlength="30" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">인증키</label>
+                    <input type="text" id="freeLicense" placeholder="인증키를 입력하세요" maxlength="30" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
                 </div>
                 
                 <button class="btn auth-btn" id="freeAuthBtn">🚀 인증하기</button>
