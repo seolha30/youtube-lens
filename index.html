@@ -1925,7 +1925,13 @@
         }
         // 메뉴 항목 생성 함수
         function createMenuItem(action, label, field, direction) {
-            const isActive = action !== 'duration-filter' && currentSortColumn === field && currentSortDirection === direction;
+            // duration-filter는 절대 active 안되도록 강제 설정
+            let isActive = false;
+            
+            if (action !== 'duration-filter' && action !== 'clear') {
+                isActive = currentSortColumn === field && currentSortDirection === direction;
+            }
+            
             const activeClass = isActive ? ' active' : '';
             
             return `<div class="context-menu-item${activeClass}" data-action="${action}" data-field="${field}" data-direction="${direction}">${label}</div>`;
