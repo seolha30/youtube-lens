@@ -803,6 +803,41 @@ function applyFilters(results, filters) {
                 shouldInclude = false;
             }
         }
+
+        // 영상길이 필터 - 튜브렌즈33 방식
+        if (filters.durationFilterActive && filters.durationFilterMinutes && filters.durationFilterCondition) {
+            const targetSeconds = filters.durationFilterMinutes * 60;
+            
+            // 영상 길이를 초로 변환
+            let durationSeconds = 0;
+            try {
+                const duration = result.duration || '0:00';
+                const parts = duration.split(':');
+                
+                if (parts.length === 3) {
+                    // H:M:S 형식
+                    durationSeconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+                } else if (parts.length === 2) {
+                    // M:S 형식
+                    durationSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                } else {
+                    // S 형식
+                    durationSeconds = parseInt(parts[0]) || 0;
+                }
+                
+                if (filters.durationFilterCondition === '이상') {
+                    if (durationSeconds < targetSeconds) {
+                        shouldInclude = false;
+                    }
+                } else { // '이하'
+                    if (durationSeconds > targetSeconds) {
+                        shouldInclude = false;
+                    }
+                }
+            } catch (error) {
+                console.log('영상길이 파싱 오류:', error);
+            }
+        }
         
         if (shouldInclude) {
             filteredResults.push(result);
