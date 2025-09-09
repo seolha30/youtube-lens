@@ -4571,10 +4571,134 @@
         
         // 앱 시작하기 버튼
         function continueToApp() {
+            const authModal = document.getElementById('authModal');
             authModal.style.display = 'none';
             document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
+            
+            // 세션 시작
+            sessionStartTime = Date.now();
+            
+            // 로그아웃 섹션 표시
+            const logoutSection = document.getElementById('logoutSection');
+            if (logoutSection) {
+                logoutSection.style.display = 'flex';
+            }
+            
+            // 세션 타이머 시작
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+            }
+            sessionTimer = setInterval(updateSessionTimer, 1000);
+            updateSessionTimer(); // 즉시 업데이트
         }
         
+        // 세션 타이머 업데이트
+        function updateSessionTimer() {
+            if (!sessionStartTime) return;
+            
+            const elapsed = Date.now() - sessionStartTime;
+            const remaining = Math.max(0, sessionDuration - elapsed);
+            
+            if (remaining <= 0) {
+                alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
+                performLogout();
+                return;
+            }
+            
+            // 남은 시간 계산
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            // 화면에 표시
+            const timerElement = document.getElementById('timerCountdown');
+            if (timerElement) {
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // 색상 변경
+                timerElement.className = 'timer-countdown';
+                if (remaining < 60000) { // 1분 미만
+                    timerElement.classList.add('critical');
+                } else if (remaining < 300000) { // 5분 미만
+                    timerElement.classList.add('warning');
+                }
+            }
+        }
+
+        // 로그아웃 확인 모달 표시
+        function showLogoutConfirm() {
+            const modal = document.getElementById('logoutConfirmModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        // 로그아웃 취소
+        function cancelLogout() {
+            const modal = document.getElementById('logoutConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // 로그아웃 확인
+        function confirmLogout() {
+            const modal = document.getElementById('logoutConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            performLogout();
+        }
+
+        // 실제 로그아웃 수행
+        function performLogout() {
+            // 세션 정리
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+                sessionTimer = null;
+            }
+            
+            sessionStartTime = null;
+            logoutWarningShown = false;
+            userAuthenticated = false;
+            
+            // 로그아웃 섹션 숨기기
+            const logoutSection = document.getElementById('logoutSection');
+            if (logoutSection) {
+                logoutSection.style.display = 'none';
+            }
+            
+            // 결과 초기화
+            originalResults = [];
+            currentResults = [];
+            document.getElementById('resultsBody').innerHTML = '';
+            document.getElementById('searchKeyword').value = '';
+            showLoading(false);
+            
+            // 인증 모달 초기화 및 표시
+            document.getElementById('userTypeSelection').style.display = 'block';
+            document.getElementById('paidAuthForm').style.display = 'none';
+            document.getElementById('freeAuthForm').style.display = 'none';
+            document.getElementById('successForm').style.display = 'none';
+            
+            // 에러 메시지 숨기기
+            hideError('paid');
+            hideError('free');
+            
+            // 입력값 초기화
+            clearForm('paid');
+            clearForm('free');
+            
+            currentUserType = null;
+            
+            // 모달 표시
+            const authModal = document.getElementById('authModal');
+            if (authModal) {
+                authModal.style.display = 'flex';
+            }
+            
+            updateStatus('로그아웃되었습니다. 다시 인증해 주세요.');
+        }
+
         // 페이지 로드 완료 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
             
