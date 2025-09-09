@@ -510,27 +510,20 @@
 
         .settings-modal {
             display: none;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0,0,0,0.8);
             z-index: 1000;
-            justify-content: center !important;
-            align-items: center !important;
-        }
-
-        .settings-modal[style*="display: block"], 
-        .settings-modal[style*="display:block"] {
-            display: flex !important;
         }
 
         .settings-content {
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: linear-gradient(135deg, #1e3c72, #2a5298);
             padding: 30px;
             border-radius: 12px;
@@ -538,7 +531,6 @@
             max-width: 500px;
             border: 2px solid #4a9eff;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            margin: 0 !important;
         }
 
         .close-btn {
@@ -1223,33 +1215,6 @@
         input::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
         input::-moz-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
         input:-ms-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
-
-        .auth-status-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .auth-timer {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 15px;
-            padding: 6px 12px;
-            color: white;
-            font-size: 11px;
-            font-weight: 600;
-            backdrop-filter: blur(10px);
-        }
-
-        .header-btn.logout {
-            background: rgba(255, 152, 0, 0.3);
-            border-color: rgba(255, 152, 0, 0.5);
-        }
-
-        .header-btn.logout:hover {
-            background: rgba(255, 152, 0, 0.4);
-            border-color: rgba(255, 152, 0, 0.7);
-        }
     </style>
 </head>
 <body>
@@ -1271,13 +1236,7 @@
                 </a>
                 <a href="https://tubelens-0o0opqa.gamma.site/" target="_blank" class="header-btn home">
                     🏠 튜브렌즈 HOME
-                </a>
-                
-                <!-- 인증 상태 표시 영역 -->
-                <div class="auth-status-area" id="authStatusArea" style="display: none;">
-                    <div class="auth-timer" id="authTimer">남은시간: --:--</div>
-                    <button class="header-btn logout" onclick="logout()">로그아웃</button>
-                </div>
+                </a>                
             </div>
         </div>
     </div>
@@ -2259,27 +2218,13 @@
         
         // 초기 인증 상태 확인
         async function initializeAuth() {
+            
+            
+            // API 키 초기화 먼저 수행
             initializeApiKeys();
             
-            const savedLicenseKey = localStorage.getItem('licenseKey');
-            const savedAuthResult = localStorage.getItem('authResult');
-            const authTimestamp = localStorage.getItem('authTimestamp');
-            
-            if (savedLicenseKey && savedAuthResult && authTimestamp) {
-                const timeDiff = Date.now() - parseInt(authTimestamp);
-                if (timeDiff < 3600000) { // 1시간
-                    const authResult = JSON.parse(savedAuthResult);
-                    if (authResult.valid) {
-                        userAuthenticated = true;
-                        document.getElementById('authModal').style.display = 'none';
-                        showAuthStatus();
-                        return;
-                    }
-                }
-            }
-            
-            // 인증이 필요한 경우 모달 표시
-            document.getElementById('authModal').style.display = 'block';
+            // 새로운 인증 시스템에서는 별도 초기화 불필요
+            // 사용자가 직접 인증 모달에서 인증을 진행
         }
 
         
@@ -2332,41 +2277,6 @@
             updateApiKeysList();
         }
         
-        // 모달 강제 중앙정렬 함수
-        function forceModalCenter() {
-            const modals = document.querySelectorAll('.settings-modal[style*="display: block"], .settings-modal[style*="display:block"]');
-            modals.forEach(modal => {
-                const content = modal.querySelector('.settings-content');
-                if (content) {
-                    // 모든 위치 관련 인라인 스타일 제거
-                    content.style.position = '';
-                    content.style.top = '';
-                    content.style.left = '';
-                    content.style.transform = '';
-                    content.style.margin = '';
-                    
-                    // CSS 클래스만 남기기
-                    content.classList.add('settings-content');
-                }
-            });
-        }
-
-        // 모달 생성 감지
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(function(node) {
-                        if (node.nodeType === 1 && node.classList && node.classList.contains('settings-modal')) {
-                            setTimeout(forceModalCenter, 10); // 약간의 지연 후 실행
-                        }
-                    });
-                }
-            });
-        });
-
-        // 문서 전체 감시 시작
-        observer.observe(document.body, { childList: true, subtree: true });
-
         function closeSettings() {
             document.getElementById('settingsModal').style.display = 'none';
         }
@@ -3270,8 +3180,6 @@
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-            // 강제 중앙정렬 적용
-            setTimeout(forceModalCenter, 50);
             
             // 인기 영상 TOP 3 로드
             loadTopVideos(channelId, uploadsPlaylistId);
@@ -3465,8 +3373,6 @@
                 `;
                 
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
-                setTimeout(forceModalCenter, 50);
-
                 
                 // 외부 클릭 시 닫기
                 document.getElementById('commentsModal').addEventListener('click', function(e) {
@@ -3939,10 +3845,14 @@
             
             const content = document.createElement('div');
             content.className = 'settings-content';
-            content.style.maxWidth = '800px';
-            content.style.maxHeight = '90vh';
-            content.style.overflowY = 'auto';
-            content.style.background = '#D2E9E1';
+            content.style.cssText = `
+                max-width: 700px;
+                max-height: 80vh;
+                overflow: hidden;
+                background: #D2E9E1;
+                padding: 0;
+                border-radius: 12px;
+            `;
             
             // 헤더 생성
             const header = document.createElement('div');
@@ -4202,59 +4112,6 @@
             }
         });
 
-        // 인증 상태 표시 및 타이머 시작
-        function showAuthStatus() {
-            const authTimestamp = localStorage.getItem('authTimestamp');
-            if (authTimestamp) {
-                document.getElementById('authStatusArea').style.display = 'flex';
-                startAuthTimer();
-            }
-        }
-
-        // 인증 타이머 시작
-        function startAuthTimer() {
-            const authTimestamp = localStorage.getItem('authTimestamp');
-            if (!authTimestamp) return;
-            
-            const interval = setInterval(() => {
-                const timeDiff = Date.now() - parseInt(authTimestamp);
-                const remainingTime = 3600000 - timeDiff; // 1시간 - 경과시간
-                
-                if (remainingTime <= 0) {
-                    clearInterval(interval);
-                    logout();
-                    return;
-                }
-                
-                const minutes = Math.floor(remainingTime / 60000);
-                const seconds = Math.floor((remainingTime % 60000) / 1000);
-                
-                document.getElementById('authTimer').textContent = 
-                    `남은시간: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }, 1000);
-        }
-
-        // 로그아웃 함수
-        function logout() {
-            localStorage.removeItem('licenseKey');
-            localStorage.removeItem('authResult');
-            localStorage.removeItem('authTimestamp');
-            localStorage.removeItem('userType');
-            
-            userAuthenticated = false;
-            document.getElementById('authStatusArea').style.display = 'none';
-            document.getElementById('authModal').style.display = 'block';
-            
-            // clearResults() 대신 직접 결과 삭제
-            originalResults = [];
-            currentResults = [];
-            document.getElementById('resultsBody').innerHTML = '';
-            document.getElementById('searchKeyword').value = '';
-            showLoading(false);
-            
-            updateStatus('로그아웃되었습니다');
-        }
-
         // 모달 외부 클릭 시 닫기
         document.getElementById('settingsModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -4266,7 +4123,6 @@
         function continueToApp() {
             authModal.style.display = 'none';
             document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
-            showAuthStatus(); // 이 줄 추가
         }
         
         // 페이지 로드 완료 시 초기화
