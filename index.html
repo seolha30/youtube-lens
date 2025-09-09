@@ -1796,7 +1796,7 @@
             if (apiKeys.length <= 1) return false; // API 키가 1개 이하면 로테이션 불가
             
             currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
-            console.log(`🔄 API 키 로테이션: ${currentApiKeyIndex + 1}/${apiKeys.length} 번째 키로 전환`);
+            
             
             // UI 업데이트
             updateStatus(`API 키 전환됨 (${currentApiKeyIndex + 1}/${apiKeys.length})`);
@@ -1873,7 +1873,7 @@
         // 라이센스 확인 함수
         async function checkLicense(licenseKey) {
             try {
-                console.log('🔍 라이센스 확인 시작:', licenseKey);
+                
                 
                 const response = await fetch('https://tiktok-lens-api.tubelens24.workers.dev/check-license', {
                     method: 'POST',
@@ -1883,7 +1883,7 @@
                     body: JSON.stringify({ licenseKey: licenseKey })
                 });
                 
-                console.log('📡 서버 응답 상태:', response.status);
+                
                 
                 let result;
                 try {
@@ -1896,7 +1896,7 @@
                     };
                 }
                 
-                console.log('📦 서버 응답 데이터:', result);
+                
                 
                 if (!result || typeof result !== 'object') {
                     console.error('❌ 잘못된 응답 형식:', result);
@@ -1915,7 +1915,7 @@
                 }
                 
                 if (result.valid) {
-                    console.log('✅ 라이센스 인증 성공');
+                    
                     return { 
                         valid: true, 
                         message: result.message || '인증 성공',
@@ -1923,7 +1923,7 @@
                         daysLeft: result.daysLeft
                     };
                 } else {
-                    console.log('❌ 라이센스 인증 실패:', result.message);
+                    
                     
                     if (result.message && result.message.includes('만료')) {
                         return { 
@@ -1941,7 +1941,7 @@
                 }
                 
             } catch (error) {
-                console.error('❌ 라이센스 확인 실패:', error);
+                
                 
                 if (error.name === 'TypeError' && error.message.includes('fetch')) {
                     return { 
@@ -2206,11 +2206,11 @@
                     currentApiKeyIndex = parseInt(savedApiIndex) || 0;
                 }
                 
-                console.log('🔑 API 키 초기화 완료:', apiKeys.length + '개');
+                
                 updateApiKeysList();
                 
             } catch (error) {
-                console.error('API 키 초기화 오류:', error);
+                
                 apiKeys = [];
                 currentApiKeyIndex = 0;
             }
@@ -2218,7 +2218,7 @@
         
         // 초기 인증 상태 확인
         async function initializeAuth() {
-            console.log('🚀 YouTube Lens 인증 시스템 초기화');
+            
             
             // API 키 초기화 먼저 수행
             initializeApiKeys();
@@ -3457,7 +3457,7 @@
             newKeyInput.value = '';
             updateApiKeysList();
             
-            console.log('✅ API 키 추가됨:', apiKeys.length + '개');
+            
             alert('API 키가 추가되었습니다.');
         }
 
@@ -3474,7 +3474,7 @@
                 localStorage.setItem('current_api_index', currentApiKeyIndex.toString());
                 
                 updateApiKeysList();
-                console.log('🗑️ API 키 삭제됨:', apiKeys.length + '개 남음');
+                
             }
         }
 
@@ -4127,7 +4127,7 @@
         
         // 페이지 로드 완료 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 YouTube Lens 시작');
+            
             initializeApiKeys(); // API 키만 초기화
         });
     </script>
