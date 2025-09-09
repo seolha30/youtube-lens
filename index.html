@@ -538,6 +538,7 @@
             max-width: 500px;
             border: 2px solid #4a9eff;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin: 0 !important;
         }
 
         .close-btn {
@@ -3899,19 +3900,10 @@
             
             const content = document.createElement('div');
             content.className = 'settings-content';
-            content.className = 'settings-content';
-            content.style.cssText = `
-                max-width: 700px;
-                max-height: 80vh;
-                overflow: hidden;
-                background: #D2E9E1;
-                padding: 0;
-                border-radius: 12px;
-                position: static !important;
-                transform: none !important;
-                top: auto !important;
-                left: auto !important;
-            `;
+            content.style.maxWidth = '800px';
+            content.style.maxHeight = '90vh';
+            content.style.overflowY = 'auto';
+            content.style.background = '#D2E9E1';
             
             // 헤더 생성
             const header = document.createElement('div');
