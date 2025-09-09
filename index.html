@@ -1786,7 +1786,7 @@
         const authModal = document.getElementById('authModal');
         const authBadge = document.getElementById('auth-badge');
         const authInfo = document.getElementById('auth-info');
-        const licenseInput = document.getElementById('license-input');
+        const licenseInput = null;
         const authBtn = document.getElementById('auth-btn');
         const logoutBtn = document.getElementById('logout-btn');
         const continueBtn = document.getElementById('continue-btn');
@@ -2272,7 +2272,11 @@
             const authTimestamp = localStorage.getItem('authTimestamp');
             
             if (savedLicenseKey) {
-                licenseInput.value = savedLicenseKey;
+                // 새로운 모달 시스템의 입력 필드들에 저장된 값 설정
+                const paidLicenseInput = document.getElementById('paidLicense');
+                const freeLicenseInput = document.getElementById('freeLicense');
+                if (paidLicenseInput) paidLicenseInput.value = savedLicenseKey;
+                if (freeLicenseInput) freeLicenseInput.value = savedLicenseKey;
                 
                 // 캐시된 인증 결과가 있고 1시간 이내면 사용
                 if (savedAuthResult && authTimestamp) {
