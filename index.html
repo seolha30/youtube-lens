@@ -1459,24 +1459,77 @@
                 ⚠️ 코드 변조 시 영구 차단됩니다
             </div>
             
-            <!-- 인증 섹션 -->
-            <div class="auth-section">
-                <div class="auth-status">
-                    <span>🔐 보안 상태:</span>
-                    <span class="status-badge status-invalid pulse" id="auth-badge">미인증</span>
+            <!-- 사용자 타입 선택 -->
+            <div class="user-type-selection" id="userTypeSelection">
+                <div class="auth-info">사용자 타입을 선택해주세요</div>
+                <div class="user-type-buttons" style="display: flex; gap: 15px; margin-bottom: 20px;">
+                    <button class="user-type-btn paid" onclick="selectUserType('paid')" style="flex: 1; padding: 15px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                        💎 유료 사용자
+                    </button>
+                    <button class="user-type-btn free" onclick="selectUserType('free')" style="flex: 1; padding: 15px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: linear-gradient(135deg, #43e97b, #38f9d7); color: white; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                        🆓 무료 사용자
+                    </button>
+                </div>
+            </div>
+
+            <!-- 유료 사용자 폼 -->
+            <div class="auth-form" id="paidAuthForm" style="display: none;">
+                <div class="auth-info">유료 사용자 인증 정보를 입력해주세요</div>
+                <div id="paidError" class="error-message" style="display: none; background: rgba(244, 67, 54, 0.2); border: 1px solid rgba(244, 67, 54, 0.4); color: #ff6b6b; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px;"></div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">이름</label>
+                    <input type="text" id="paidName" placeholder="결제시 입력한 이름" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
                 </div>
                 
-                <div id="auth-info" class="auth-info">라이센스키를 아래에 입력하세요</div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">연락처</label>
+                    <input type="tel" id="paidPhone" placeholder="010-0000-0000" maxlength="13" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
                 
-                <input type="text" 
-                       class="license-input" 
-                       id="license-input" 
-                       placeholder="라이센스키 입력"
-                       maxlength="30">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">인증키</label>
+                    <input type="text" id="paidLicense" placeholder="인증키를 입력하세요" maxlength="30" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
                 
-                <button class="btn auth-btn" id="auth-btn">🚀 보안 인증</button>
-                <button class="btn logout-btn hidden" id="logout-btn">🔓 인증 해제</button>
-                <button class="btn continue-btn hidden" id="continue-btn" onclick="continueToApp()">📱 앱 시작하기</button>
+                <button class="btn auth-btn" id="paidAuthBtn">🚀 인증하기</button>
+                <button class="back-btn" onclick="goBackToSelection()" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: transparent; color: white; font-size: 14px; cursor: pointer; margin-top: 10px;">← 뒤로가기</button>
+            </div>
+
+            <!-- 무료 사용자 폼 -->
+            <div class="auth-form" id="freeAuthForm" style="display: none;">
+                <div class="auth-info">무료 사용자 인증 정보를 입력해주세요</div>
+                <div id="freeError" class="error-message" style="display: none; background: rgba(244, 67, 54, 0.2); border: 1px solid rgba(244, 67, 54, 0.4); color: #ff6b6b; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px;"></div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">이름</label>
+                    <input type="text" id="freeName" placeholder="신청시 입력한 이름" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">이메일</label>
+                    <input type="email" id="freeEmail" placeholder="example@gmail.com" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600;">인증키</label>
+                    <input type="text" id="freeLicense" placeholder="인증키를 입력하세요" maxlength="30" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
+                
+                <button class="btn auth-btn" id="freeAuthBtn">🚀 인증하기</button>
+                <button class="back-btn" onclick="goBackToSelection()" style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: transparent; color: white; font-size: 14px; cursor: pointer; margin-top: 10px;">← 뒤로가기</button>
+            </div>
+
+            <!-- 인증 성공 -->
+            <div class="auth-form" id="successForm" style="display: none;">
+                <div class="auth-section">
+                    <div class="auth-status">
+                        <span>🔐 보안 상태:</span>
+                        <span class="status-badge status-authenticated">인증됨</span>
+                    </div>
+                    <div class="auth-info" id="successMessage">인증이 완료되었습니다</div>
+                </div>
+                <button class="btn continue-btn" onclick="continueToApp()">📱 앱 시작하기</button>
             </div>
             
             <div class="auth-footer">
@@ -1936,50 +1989,222 @@
             }
         }
 
-        // 인증 버튼 클릭
-        authBtn.addEventListener('click', async function() {
-            const licenseKey = licenseInput.value.trim();
-            
-            if (!licenseKey) {
-                authInfo.textContent = '라이센스키를 입력하세요';
-                return;
-            }
-            
-            // 로딩 상태
-            authBtn.textContent = '확인 중...';
-            authBtn.disabled = true;
-            document.body.classList.add('loading');
-            
-            const authResult = await checkLicense(licenseKey);
-            
-            if (authResult.valid) {
-                // 인증 성공 - 라이센스키 저장
-                localStorage.setItem('licenseKey', licenseKey);
-                localStorage.setItem('authResult', JSON.stringify(authResult));
-                localStorage.setItem('authTimestamp', Date.now().toString());
-            }
-            
-            updateAuthUI(authResult);
-            
-            // 로딩 상태 해제
-            authBtn.textContent = '🚀 보안 인증';
-            authBtn.disabled = false;
-            document.body.classList.remove('loading');
-        });
+        // Google Apps Script 배포 URL (구글시트 검증용)
+        const SHEET_API_ENDPOINT = 'https://script.google.com/macros/s/AKfycby-fQmIj_2jovtXGD488uOyP1EzVaPaXhXXgzwyFVK48FXvpJoFcdqXfzVaX_nlt7qe2A/exec';
 
-        // 인증 해제 버튼
-        logoutBtn.addEventListener('click', function() {
-            localStorage.removeItem('licenseKey');
-            localStorage.removeItem('authResult');
-            localStorage.removeItem('authTimestamp');
+        // 현재 사용자 타입 추적
+        let currentUserType = null;
+
+        // 사용자 타입 선택
+        function selectUserType(type) {
+            currentUserType = type;
             
-            updateAuthUI({
-                valid: false,
-                message: '인증이 해제되었습니다'
+            // 선택 화면 숨기기
+            document.getElementById('userTypeSelection').style.display = 'none';
+            
+            // 선택된 폼 표시
+            document.getElementById(`${type}AuthForm`).style.display = 'block';
+            
+            // 전화번호 포맷팅 설정 (유료 사용자의 경우)
+            if (type === 'paid') {
+                setupPhoneFormatting();
+            }
+        }
+
+        // 뒤로가기
+        function goBackToSelection() {
+            document.getElementById('userTypeSelection').style.display = 'block';
+            document.getElementById('paidAuthForm').style.display = 'none';
+            document.getElementById('freeAuthForm').style.display = 'none';
+            
+            // 에러 메시지 숨기기
+            hideError('paid');
+            hideError('free');
+            
+            // 입력값 초기화
+            clearForm('paid');
+            clearForm('free');
+            
+            currentUserType = null;
+        }
+
+        // 전화번호 자동 포맷팅
+        function setupPhoneFormatting() {
+            const phoneInput = document.getElementById('paidPhone');
+            phoneInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                if (value.length <= 11) {
+                    if (value.length > 6) {
+                        value = value.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+                    } else if (value.length > 3) {
+                        value = value.replace(/(\d{3})(\d{4})/, '$1-$2');
+                    }
+                }
+                e.target.value = value;
             });
+        }
+
+        // 에러 메시지 표시
+        function showError(type, message) {
+            const errorEl = document.getElementById(`${type}Error`);
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        // 에러 메시지 숨기기
+        function hideError(type) {
+            const errorEl = document.getElementById(`${type}Error`);
+            if (errorEl) errorEl.style.display = 'none';
+        }
+
+        // 폼 초기화
+        function clearForm(type) {
+            if (type === 'paid') {
+                document.getElementById('paidName').value = '';
+                document.getElementById('paidPhone').value = '';
+                document.getElementById('paidLicense').value = '';
+            } else if (type === 'free') {
+                document.getElementById('freeName').value = '';
+                document.getElementById('freeEmail').value = '';
+                document.getElementById('freeLicense').value = '';
+            }
+        }
+
+        // 유료 사용자 구글시트 검증
+        async function validatePaidUser(name, phone) {
+            try {
+                const phoneLastDigits = phone.replace(/[^0-9]/g, '').slice(-8);
+                const response = await fetch(`${SHEET_API_ENDPOINT}?action=findAuthKey&name=${encodeURIComponent(name)}&phone=${phoneLastDigits}`);
+                const data = await response.json();
+                return data.success && data.authKeys && data.authKeys.length > 0;
+            } catch (error) {
+                console.error('유료 사용자 검증 오류:', error);
+                return false;
+            }
+        }
+
+        // 무료 사용자 구글시트 검증
+        async function validateFreeUser(name, email) {
+            try {
+                const response = await fetch(`${SHEET_API_ENDPOINT}?action=findFreeAuthKey&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+                return data.success && data.authKeys && data.authKeys.length > 0;
+            } catch (error) {
+                console.error('무료 사용자 검증 오류:', error);
+                return false;
+            }
+        }
+
+        // 2단계 인증 처리
+        async function authenticate(type) {
+            const btn = document.getElementById(`${type}AuthBtn`);
+            const originalText = btn.textContent;
             
-            licenseInput.value = '';
-        });
+            btn.disabled = true;
+            btn.textContent = '검증 중...';
+            hideError(type);
+            
+            try {
+                let name, contact, licenseKey;
+                
+                if (type === 'paid') {
+                    name = document.getElementById('paidName').value.trim();
+                    contact = document.getElementById('paidPhone').value.trim();
+                    licenseKey = document.getElementById('paidLicense').value.trim();
+                    
+                    if (!name || !contact || !licenseKey) {
+                        showError(type, '모든 필드를 입력해주세요.');
+                        return;
+                    }
+                    
+                    if (name.length < 2) {
+                        showError(type, '이름을 올바르게 입력해주세요. (2글자 이상)');
+                        return;
+                    }
+                    
+                    if (contact.replace(/[^0-9]/g, '').length < 8) {
+                        showError(type, '연락처를 올바르게 입력해주세요. (최소 8자리)');
+                        return;
+                    }
+                    
+                } else if (type === 'free') {
+                    name = document.getElementById('freeName').value.trim();
+                    contact = document.getElementById('freeEmail').value.trim();
+                    licenseKey = document.getElementById('freeLicense').value.trim();
+                    
+                    if (!name || !contact || !licenseKey) {
+                        showError(type, '모든 필드를 입력해주세요.');
+                        return;
+                    }
+                    
+                    if (name.length < 2) {
+                        showError(type, '이름을 올바르게 입력해주세요. (2글자 이상)');
+                        return;
+                    }
+                    
+                    if (!contact.includes('@')) {
+                        showError(type, '올바른 이메일 주소를 입력해주세요.');
+                        return;
+                    }
+                }
+                
+                // 1단계: 구글시트 사용자 정보 검증
+                btn.textContent = '사용자 정보 확인 중...';
+                let userValid = false;
+                
+                if (type === 'paid') {
+                    userValid = await validatePaidUser(name, contact);
+                } else if (type === 'free') {
+                    userValid = await validateFreeUser(name, contact);
+                }
+                
+                // 2단계: 라이센스 키 검증
+                btn.textContent = '인증키 확인 중...';
+                const licenseResult = await checkLicense(licenseKey);
+                
+                // 결과 판정
+                if (userValid && licenseResult.valid) {
+                    // 둘 다 성공
+                    userAuthenticated = true;
+                    showSuccess(type, name);
+                    
+                    // 로컬 스토리지에 저장
+                    localStorage.setItem('licenseKey', licenseKey);
+                    localStorage.setItem('authResult', JSON.stringify(licenseResult));
+                    localStorage.setItem('authTimestamp', Date.now().toString());
+                    localStorage.setItem('userType', type);
+                    
+                } else if (!userValid && licenseResult.valid) {
+                    // 사용자 정보만 실패
+                    showError(type, `등록된 ${type === 'paid' ? '이름/연락처' : '이름/이메일'} 정보와 일치하지 않습니다. 입력하신 정보를 다시 확인해주세요.`);
+                } else if (userValid && !licenseResult.valid) {
+                    // 인증키만 실패
+                    showError(type, `인증키가 올바르지 않습니다: ${licenseResult.message}`);
+                } else {
+                    // 둘 다 실패
+                    showError(type, `사용자 정보와 인증키가 모두 일치하지 않습니다. 입력하신 정보를 다시 확인해주세요.`);
+                }
+                
+            } catch (error) {
+                console.error('인증 처리 오류:', error);
+                showError(type, '인증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // 인증 성공 화면 표시
+        function showSuccess(type, name) {
+            document.getElementById('paidAuthForm').style.display = 'none';
+            document.getElementById('freeAuthForm').style.display = 'none';
+            document.getElementById('successForm').style.display = 'block';
+            document.getElementById('successMessage').textContent = `${name}님, 인증이 완료되었습니다!`;
+        }
+
+        // 인증 버튼 이벤트 리스너
+        document.getElementById('paidAuthBtn').addEventListener('click', () => authenticate('paid'));
+        document.getElementById('freeAuthBtn').addEventListener('click', () => authenticate('free'));
 
         // 앱 시작하기 버튼
         function continueToApp() {
@@ -1987,10 +2212,14 @@
             document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
         }
 
-        // Enter 키 처리
-        licenseInput.addEventListener('keypress', function(e) {
+        // Enter 키 처리 (수정된 버전)
+        document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                authBtn.click();
+                if (currentUserType === 'paid') {
+                    authenticate('paid');
+                } else if (currentUserType === 'free') {
+                    authenticate('free');
+                }
             }
         });
 
