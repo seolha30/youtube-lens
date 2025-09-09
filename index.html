@@ -1890,7 +1890,7 @@
             } else if (sortType === 'number') {
                 menuItems.push(createMenuItem('high', '큰숫자순', sortField, 'desc'));
                 menuItems.push(createMenuItem('low', '작은숫자순', sortField, 'asc'));
-            } else if (sortType === 'duration') {
+            } else if (sortType === 'duration' || sortField === 'duration') {
                 menuItems.push(createMenuItem('longest', '긴순', sortField, 'desc'));
                 menuItems.push(createMenuItem('shortest', '짧은순', sortField, 'asc'));
                 // 영상길이 선택 옵션 추가
