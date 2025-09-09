@@ -4216,6 +4216,7 @@
         function continueToApp() {
             authModal.style.display = 'none';
             document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
+            showAuthStatus(); // 이 줄 추가
         }
         
         // 페이지 로드 완료 시 초기화
