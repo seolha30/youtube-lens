@@ -170,7 +170,9 @@
         }
 
         .sidebar {
-            width: 280px;
+            width: 20%;
+            min-width: 250px;
+            max-width: 320px;
             background: #2a2a2a;
             border-right: 1px solid #444;
             overflow-y: auto;
@@ -1097,22 +1099,27 @@
             border-bottom: 1px solid #eee;
         }
 
+        /* 태블릿 크기 (1024px 이하) */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 25%;
+                min-width: 220px;
+            }
+            
+            .url-input {
+                width: 300px;
+                max-width: 40%;
+            }
+        }
+
+        /* 작은 태블릿 (768px 이하) */
         @media (max-width: 768px) {
             .header {
-                padding: 10px 20px;
+                padding: 10px 15px;
             }
             
             .header-content {
-                gap: 10px;
-            }
-            
-            .header-left {
-                gap: 10px;
-            }
-            
-            .header-logo {
-                width: 40px;
-                height: 40px;
+                gap: 8px;
             }
             
             .header-title {
@@ -1121,19 +1128,26 @@
             
             .header-subtitle {
                 font-size: 10px;
-                padding: 2px 8px;
             }
             
-            .header-buttons {
-                gap: 8px;
+            .sidebar {
+                width: 30%;
+                min-width: 200px;
+            }
+            
+            .url-input {
+                width: 250px;
+                max-width: 35%;
             }
             
             .header-btn {
                 padding: 6px 10px;
                 font-size: 11px;
-                border-radius: 15px;
             }
-            
+        }
+
+        /* 모바일 (480px 이하) */
+        @media (max-width: 480px) {
             .container {
                 flex-direction: column;
             }
@@ -1142,6 +1156,7 @@
                 width: 100%;
                 height: auto;
                 max-height: 300px;
+                min-width: auto;
             }
             
             .toolbar {
@@ -1150,7 +1165,12 @@
             }
             
             .url-input {
-                min-width: auto;
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .header-btn span {
+                display: none;
             }
         }
 
