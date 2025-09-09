@@ -2263,16 +2263,23 @@
                 console.log('🔄 인증 상태 재확인');
                 const authResult = await checkLicense(savedLicenseKey);
                 updateAuthUI(authResult);
-                
+
                 if (authResult.valid) {
                     localStorage.setItem('authResult', JSON.stringify(authResult));
                     localStorage.setItem('authTimestamp', Date.now().toString());
+                    
+                    // 인증 성공 시 모달 닫고 메인 화면으로 이동
+                    authModal.style.display = 'none';
+                    document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
+                    return; // 인증 완료되었으므로 함수 종료
                 }
             } else {
                 updateAuthUI({
                     valid: false,
-                    message: '인증키를 아래에 입력하세요'
+                    message: '인증키를 입력하세요'
                 });
+                // 인증이 필요하므로 모달 표시
+                authModal.style.display = 'block';
             }
         }
 
