@@ -1100,108 +1100,56 @@
             border-bottom: 1px solid #eee;
         }
 
-        /* 태블릿 크기 (1024px 이하) */
-        @media (max-width: 1024px) {
-            .header {
-                padding: 6px 15px;
-            }
-            
-            .header-title {
-                font-size: 24px;
-            }
-            
-            .header-subtitle {
-                font-size: 11px;
-            }
-            
-            .sidebar {
-                width: 25%;
-                min-width: 220px;
-            }
-            
-            .container {
-                height: calc(100vh - 58px - 40px);
-            }
-            
-            /* 인증 모달 태블릿 최적화 */
+        /* 반응형 디자인 */
+        @media screen and (max-width: 1200px) {
             .auth-container {
-                width: 85%;
-                max-width: 400px;
-                padding: 25px;
+                width: 80% !important;
+                max-width: 450px !important;
+                padding: 30px !important;
             }
-            
             .auth-title {
-                font-size: 26px;
-            }
-            
-            .auth-logo {
-                width: 65px;
-                height: 65px;
+                font-size: 28px !important;
             }
         }
 
-        /* 작은 태블릿 (768px 이하) */
-        @media (max-width: 768px) {
-            .header {
-                padding: 5px 12px;
-            }
-            
-            .header-title {
-                font-size: 18px;
-            }
-            
-            .header-subtitle {
-                font-size: 9px;
-                padding: 2px 6px;
-            }
-            
-            .header-logo {
-                width: 36px;
-                height: 36px;
-            }
-            
-            .header-btn {
-                padding: 4px 8px;
-                font-size: 10px;
-            }
-            
-            .sidebar {
-                width: 30%;
-                min-width: 200px;
-            }
-            
-            .container {
-                height: calc(100vh - 48px - 40px);
-            }
-            
-            /* 인증 모달 작은 태블릿 최적화 */
+        @media screen and (max-width: 800px) {
             .auth-container {
-                width: 90%;
-                max-width: 380px;
-                padding: 22px;
+                width: 85% !important;
+                max-width: 400px !important;
+                padding: 25px !important;
             }
-            
             .auth-title {
-                font-size: 24px;
+                font-size: 24px !important;
             }
-            
-            .auth-subtitle {
-                font-size: 13px;
-            }
-            
             .auth-logo {
-                width: 60px;
-                height: 60px;
+                width: 60px !important;
+                height: 60px !important;
             }
-            
+        }
+
+        @media screen and (max-width: 600px) {
+            .auth-container {
+                width: 90% !important;
+                max-width: 350px !important;
+                padding: 20px !important;
+            }
+            .auth-title {
+                font-size: 20px !important;
+            }
+            .auth-subtitle {
+                font-size: 12px !important;
+            }
+            .auth-logo {
+                width: 50px !important;
+                height: 50px !important;
+            }
             .license-input {
-                font-size: 14px;
-                padding: 12px;
+                font-size: 14px !important;
+                padding: 10px !important;
             }
-            
             .auth-btn, .logout-btn, .continue-btn {
-                font-size: 14px;
-                padding: 12px;
+                font-size: 13px !important;
+                padding: 10px !important;
             }
         }
 
