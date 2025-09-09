@@ -2114,7 +2114,7 @@
             const originalText = btn.textContent;
             
             btn.disabled = true;
-            btn.textContent = '검증 중...';
+            btn.textContent = '확인중...';
             hideError(type);
             
             try {
@@ -2162,7 +2162,7 @@
                 }
                 
                 // 1단계: 구글시트 사용자 정보 검증
-                btn.textContent = '사용자 정보 확인 중...';
+                btn.textContent = '확인중...';
                 let userValid = false;
                 
                 if (type === 'paid') {
@@ -2172,7 +2172,7 @@
                 }
                 
                 // 2단계: 라이센스 키 검증
-                btn.textContent = '인증키 확인 중...';
+                btn.textContent = '확인중...';
                 const licenseResult = await checkLicense(licenseKey);
                 
                 // 결과 판정
