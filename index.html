@@ -4202,7 +4202,13 @@
             document.getElementById('authStatusArea').style.display = 'none';
             document.getElementById('authModal').style.display = 'block';
             
-            clearResults();
+            // clearResults() 대신 직접 결과 삭제
+            originalResults = [];
+            currentResults = [];
+            document.getElementById('resultsBody').innerHTML = '';
+            document.getElementById('searchKeyword').value = '';
+            showLoading(false);
+            
             updateStatus('로그아웃되었습니다');
         }
 
