@@ -2332,6 +2332,41 @@
             updateApiKeysList();
         }
         
+        // 모달 강제 중앙정렬 함수
+        function forceModalCenter() {
+            const modals = document.querySelectorAll('.settings-modal[style*="display: block"], .settings-modal[style*="display:block"]');
+            modals.forEach(modal => {
+                const content = modal.querySelector('.settings-content');
+                if (content) {
+                    // 모든 위치 관련 인라인 스타일 제거
+                    content.style.position = '';
+                    content.style.top = '';
+                    content.style.left = '';
+                    content.style.transform = '';
+                    content.style.margin = '';
+                    
+                    // CSS 클래스만 남기기
+                    content.classList.add('settings-content');
+                }
+            });
+        }
+
+        // 모달 생성 감지
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 && node.classList && node.classList.contains('settings-modal')) {
+                            setTimeout(forceModalCenter, 10); // 약간의 지연 후 실행
+                        }
+                    });
+                }
+            });
+        });
+
+        // 문서 전체 감시 시작
+        observer.observe(document.body, { childList: true, subtree: true });
+
         function closeSettings() {
             document.getElementById('settingsModal').style.display = 'none';
         }
@@ -3235,6 +3270,8 @@
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
+            // 강제 중앙정렬 적용
+            setTimeout(forceModalCenter, 50);
             
             // 인기 영상 TOP 3 로드
             loadTopVideos(channelId, uploadsPlaylistId);
@@ -3428,6 +3465,8 @@
                 `;
                 
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
+                setTimeout(forceModalCenter, 50);
+
                 
                 // 외부 클릭 시 닫기
                 document.getElementById('commentsModal').addEventListener('click', function(e) {
