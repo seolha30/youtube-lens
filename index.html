@@ -13,16 +13,16 @@
         }
 
         html, body {
-            height: 100%;
-            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #1a1a1a;
             color: #ffffff;
-            display: flex;
-            flex-direction: column;
+            overflow-x: hidden;
         }
 
         .header {
@@ -166,7 +166,7 @@
 
         .container {
             display: flex;
-            flex: 1;
+            height: calc(100vh - 84px - 40px);
         }
 
         .sidebar {
@@ -177,6 +177,7 @@
             border-right: 1px solid #444;
             overflow-y: auto;
             flex-shrink: 0;
+            height: 100%;
         }
 
         .sidebar-section {
