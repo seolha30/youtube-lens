@@ -3805,7 +3805,7 @@
         function openSettings() {
             if (!requireAuth('API 키 설정')) return;
             document.getElementById('settingsModal').style.display = 'block';
-            loadApiKeysList();
+            updateApiKeysList();
         }
 
         function closeSettings() {
@@ -3854,30 +3854,7 @@
             }
         }
 
-        function loadApiKeysList() {
-            const container = document.getElementById('apiKeysList');
-            container.innerHTML = '';
-            
-            if (apiKeys.length === 0) {
-                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">등록된 API 키가 없습니다</div>';
-                return;
-            }
-            
-            apiKeys.forEach((key, index) => {
-                const isActive = index === currentApiKeyIndex;
-                const keyElement = document.createElement('div');
-                keyElement.className = 'api-key-item' + (isActive ? ' active' : '');
-                keyElement.innerHTML = `
-                    <div class="api-key-text">${key.substring(0, 8)}...${key.substring(key.length - 4)}</div>
-                    <div>
-                        <span class="api-key-status ${isActive ? 'status-active' : 'status-standby'}">${isActive ? '사용중' : '대기'}</span>
-                        <button class="api-key-remove" onclick="removeApiKey(${index})">삭제</button>
-                    </div>
-                `;
-                container.appendChild(keyElement);
-            });
-        }
-
+        
         // 상태 업데이트 함수
         function updateStatus(message) {
             const statusBar = document.getElementById('statusBar');
