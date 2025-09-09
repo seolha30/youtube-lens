@@ -3299,8 +3299,30 @@
                 <td><button class="btn btn-primary" onclick="collectSubtitle('${item.videoId}')" style="padding: 4px 8px; font-size: 11px;">자막수집</button></td>
                 <td title="전체 설명 보기" class="description-cell" onclick="showDescriptionModal('${item.videoId}', '${item.title.replace(/'/g, "&apos;")}')" style="cursor: pointer; color: #2196F3; text-decoration: underline;">${shortDescription}</td>
             `;
-            
-            return row;
+            // 저장된 컬럼 설정 적용
+            applyColumnSettingsToRow(row);
+
+            return row;            
+        }
+
+        // 행의 각 셀에 컬럼 설정 적용
+        function applyColumnSettingsToRow(row) {
+            try {
+                const savedSettings = localStorage.getItem('column_visibility_settings');
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    const cells = row.querySelectorAll('td');
+                    
+                    cells.forEach((cell, index) => {
+                        if (settings.hasOwnProperty(index.toString())) {
+                            const isVisible = settings[index.toString()];
+                            cell.style.display = isVisible ? '' : 'none';
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('행 컬럼 설정 적용 실패:', error);
+            }
         }
 
         // 게이지 바 생성 함수
