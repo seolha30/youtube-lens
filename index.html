@@ -1784,12 +1784,7 @@
 
         // DOM 요소들
         const authModal = document.getElementById('authModal');
-        const authBadge = document.getElementById('auth-badge');
-        const authInfo = document.getElementById('auth-info');
-        const licenseInput = null;
-        const authBtn = document.getElementById('auth-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const continueBtn = document.getElementById('continue-btn');
+
 
         // 현재 사용 중인 API 키 반환 (로테이션 지원)
         function getCurrentApiKey() {
@@ -1963,42 +1958,14 @@
             }
         }
 
-        // UI 업데이트 함수
+        // UI 업데이트 함수 (새로운 모달 시스템용으로 단순화)
         function updateAuthUI(authResult) {
             if (authResult.valid) {
-                // 인증 성공
-                authBadge.textContent = '인증됨';
-                authBadge.className = 'status-badge status-authenticated';
-                authBadge.classList.remove('pulse');
-                authInfo.textContent = authResult.message;
-                
-                // 인증 관련 UI 숨기기
-                licenseInput.style.display = 'none';
-                authBtn.style.display = 'none';
-                logoutBtn.classList.remove('hidden');
-                continueBtn.classList.remove('hidden');
-                
                 userAuthenticated = true;
-                
+                console.log('인증 성공:', authResult.message);
             } else {
-                // 인증 실패
-                if (authResult.expired) {
-                    authBadge.textContent = '만료됨';
-                    authBadge.className = 'status-badge status-expired pulse';
-                } else {
-                    authBadge.textContent = '미인증';
-                    authBadge.className = 'status-badge status-invalid pulse';
-                }
-                
-                authInfo.textContent = authResult.message;
-                
-                // 인증 관련 UI 표시
-                licenseInput.style.display = 'block';
-                authBtn.style.display = 'block';
-                logoutBtn.classList.add('hidden');
-                continueBtn.classList.add('hidden');
-                
                 userAuthenticated = false;
+                console.log('인증 실패:', authResult.message);
             }
         }
 
