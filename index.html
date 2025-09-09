@@ -510,13 +510,20 @@
 
         .settings-modal {
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
             background: rgba(0,0,0,0.8);
             z-index: 1000;
+            justify-content: center !important;
+            align-items: center !important;
+        }
+
+        .settings-modal[style*="display: block"], 
+        .settings-modal[style*="display:block"] {
+            display: flex !important;
         }
 
         .settings-content {
@@ -3892,6 +3899,7 @@
             
             const content = document.createElement('div');
             content.className = 'settings-content';
+            content.className = 'settings-content';
             content.style.cssText = `
                 max-width: 700px;
                 max-height: 80vh;
@@ -3899,6 +3907,10 @@
                 background: #D2E9E1;
                 padding: 0;
                 border-radius: 12px;
+                position: static !important;
+                transform: none !important;
+                top: auto !important;
+                left: auto !important;
             `;
             
             // 헤더 생성
