@@ -1215,6 +1215,248 @@
         input::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
         input::-moz-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
         input:-ms-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
+
+        /* 로그아웃 섹션 스타일 */
+        .logout-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-right: 15px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .session-timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+        }
+
+        .timer-icon {
+            font-size: 16px;
+            animation: pulse 2s infinite;
+        }
+
+        .timer-text {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .timer-label {
+            font-size: 9px;
+            opacity: 0.8;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .timer-countdown {
+            font-size: 14px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            line-height: 1;
+            color: #FFD700;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+        }
+
+        .timer-countdown.warning {
+            color: #FF6B6B;
+            animation: blink 1s infinite;
+        }
+
+        .timer-countdown.critical {
+            color: #FF3030;
+            animation: fastBlink 0.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        @keyframes fastBlink {
+            0%, 25% { opacity: 1; }
+            26%, 100% { opacity: 0.2; }
+        }
+
+        .logout-btn-header {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .logout-btn-header:hover {
+            background: rgba(255, 100, 100, 0.4);
+            border-color: rgba(255, 100, 100, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 100, 100, 0.3);
+        }
+
+        /* 로그아웃 확인 모달 스타일 */
+        .logout-confirm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 15000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logout-confirm-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 2px solid #ddd;
+        }
+
+        .logout-confirm-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .logout-confirm-message {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .logout-confirm-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .logout-confirm-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .logout-confirm-yes {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .logout-confirm-yes:hover {
+            background: linear-gradient(135deg, #ff5252, #e53935);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .logout-confirm-no {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .logout-confirm-no:hover {
+            background: linear-gradient(135deg, #45a049, #388e3c);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 1024px) {
+            .logout-section {
+                gap: 10px;
+                padding: 6px 12px;
+            }
+            
+            .timer-label {
+                font-size: 8px;
+            }
+            
+            .timer-countdown {
+                font-size: 12px;
+            }
+            
+            .logout-btn-header {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .logout-section {
+                gap: 8px;
+                padding: 4px 8px;
+            }
+            
+            .timer-text {
+                display: none;
+            }
+            
+            .timer-countdown {
+                font-size: 11px;
+            }
+            
+            .logout-btn-header {
+                padding: 5px 8px;
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logout-section {
+                gap: 5px;
+                padding: 3px 6px;
+                margin-right: 5px;
+            }
+            
+            .timer-label {
+                display: none;
+            }
+            
+            .session-timer {
+                gap: 4px;
+            }
+            
+            .logout-btn-header span {
+                display: none;
+            }
+        }
+
+        @keyframes slideInRight {
+            0% { 
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            100% { 
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1231,6 +1473,21 @@
                 </div>
             </div>
             <div class="header-buttons">
+                <!-- 로그아웃 섹션 (인증 후에만 표시) -->
+                <div class="logout-section" id="logoutSection" style="display: none;">
+                    <div class="session-timer" id="sessionTimer">
+                        <div class="timer-icon">⏰</div>
+                        <div class="timer-text">
+                            <div class="timer-label">세션 남은 시간</div>
+                            <div class="timer-countdown" id="timerCountdown">29:59</div>
+                        </div>
+                    </div>
+                    <button class="logout-btn-header" onclick="showLogoutConfirm()">
+                        🚪 로그아웃
+                    </button>
+                </div>
+                
+                <!-- 기존 링크 버튼들 -->
                 <a href="https://www.youtube.com/@튜브렌즈" target="_blank" class="header-btn youtube">
                     📺 튜브렌즈 유튜브
                 </a>
@@ -1589,6 +1846,20 @@
     <div id="contextMenu" class="context-menu">
         <!-- 동적으로 생성됩니다 -->
     </div>
+    <!-- 로그아웃 확인 모달 -->
+    <div class="logout-confirm-modal" id="logoutConfirmModal">
+        <div class="logout-confirm-content">
+            <div class="logout-confirm-title">🚪 로그아웃 확인</div>
+            <div class="logout-confirm-message">
+                정말로 로그아웃 하시겠습니까?<br>
+                <small style="color: #999;">다시 로그인하려면 인증이 필요합니다.</small>
+            </div>
+            <div class="logout-confirm-buttons">
+                <button class="logout-confirm-btn logout-confirm-yes" onclick="confirmLogout()">로그아웃</button>
+                <button class="logout-confirm-btn logout-confirm-no" onclick="cancelLogout()">취소</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // 컨텍스트 메뉴 및 정렬 관련 변수
@@ -1764,6 +2035,11 @@
         // 전역 변수들
         let userAuthenticated = false;
         let authCache = null;
+        // 세션 관리 변수들
+        let sessionDuration = 30 * 60 * 1000; // 30분 (밀리초)
+        let sessionStartTime = null;
+        let sessionTimer = null;
+        let logoutWarningShown = false;
         let apiKeys = [];
         let currentApiKeyIndex = 0; // 현재 사용 중인 API 키 인덱스
         let currentResults = [];
@@ -2179,6 +2455,180 @@
         function continueToApp() {
             authModal.style.display = 'none';
             document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
+            
+            // 세션 시작
+            startSession();
+        }
+
+        // 세션 시작 함수
+        function startSession() {
+            sessionStartTime = Date.now();
+            
+            // 로그아웃 섹션 표시
+            const logoutSection = document.getElementById('logoutSection');
+            if (logoutSection) {
+                logoutSection.style.display = 'flex';
+            }
+            
+            // 세션 타이머 시작
+            startSessionTimer();
+        }
+
+        // 세션 타이머 시작
+        function startSessionTimer() {
+            sessionTimer = setInterval(updateSessionTimer, 1000);
+            updateSessionTimer(); // 즉시 업데이트
+        }
+
+        // 세션 타이머 업데이트
+        function updateSessionTimer() {
+            if (!sessionStartTime) return;
+            
+            const elapsed = Date.now() - sessionStartTime;
+            const remaining = Math.max(0, sessionDuration - elapsed);
+            
+            if (remaining <= 0) {
+                // 자동 로그아웃
+                autoLogout();
+                return;
+            }
+            
+            // 남은 시간 계산
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            
+            // 화면에 표시
+            const timerElement = document.getElementById('timerCountdown');
+            if (timerElement) {
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // 색상 변경 (5분 미만 경고, 1분 미만 위험)
+                timerElement.className = 'timer-countdown';
+                if (remaining < 60000) { // 1분 미만
+                    timerElement.classList.add('critical');
+                    if (!logoutWarningShown) {
+                        showLogoutWarning('1분 후 자동 로그아웃됩니다!');
+                        logoutWarningShown = true;
+                    }
+                } else if (remaining < 300000) { // 5분 미만
+                    timerElement.classList.add('warning');
+                    if (!logoutWarningShown) {
+                        showLogoutWarning('5분 후 자동 로그아웃됩니다.');
+                        logoutWarningShown = true;
+                    }
+                }
+            }
+        }
+
+        // 로그아웃 경고 표시
+        function showLogoutWarning(message) {
+            const warning = document.createElement('div');
+            warning.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                z-index: 9999;
+                font-weight: bold;
+                font-size: 14px;
+                animation: slideInRight 0.5s ease;
+            `;
+            warning.textContent = message;
+            
+            document.body.appendChild(warning);
+            
+            // 3초 후 제거
+            setTimeout(() => {
+                warning.remove();
+            }, 3000);
+        }
+
+        // 로그아웃 확인 모달 표시
+        function showLogoutConfirm() {
+            const modal = document.getElementById('logoutConfirmModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        // 로그아웃 취소
+        function cancelLogout() {
+            const modal = document.getElementById('logoutConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // 로그아웃 확인
+        function confirmLogout() {
+            const modal = document.getElementById('logoutConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            performLogout();
+        }
+
+        // 자동 로그아웃
+        function autoLogout() {
+            alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
+            performLogout();
+        }
+
+        // 실제 로그아웃 수행
+        function performLogout() {
+            // 세션 정리
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+                sessionTimer = null;
+            }
+            
+            sessionStartTime = null;
+            logoutWarningShown = false;
+            userAuthenticated = false;
+            
+            // 로그아웃 섹션 숨기기
+            const logoutSection = document.getElementById('logoutSection');
+            if (logoutSection) {
+                logoutSection.style.display = 'none';
+            }
+            
+            // 결과 초기화
+            clearResults();
+            
+            // 인증 모달 초기화 및 표시
+            resetAuthModal();
+            
+            // 상태 업데이트
+            updateStatus('로그아웃되었습니다. 다시 인증해 주세요.');
+        }
+
+        // 인증 모달 초기화
+        function resetAuthModal() {
+            // 모든 폼 숨기기
+            document.getElementById('userTypeSelection').style.display = 'block';
+            document.getElementById('paidAuthForm').style.display = 'none';
+            document.getElementById('freeAuthForm').style.display = 'none';
+            document.getElementById('successForm').style.display = 'none';
+            
+            // 에러 메시지 숨기기
+            hideError('paid');
+            hideError('free');
+            
+            // 입력값 초기화
+            clearForm('paid');
+            clearForm('free');
+            
+            currentUserType = null;
+            
+            // 모달 표시
+            const authModal = document.getElementById('authModal');
+            if (authModal) {
+                authModal.style.display = 'flex';
+            }
         }
 
         // Enter 키 처리 (수정된 버전)
