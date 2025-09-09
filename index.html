@@ -3975,8 +3975,10 @@
         
         // 헤더 이벤트 설정 함수
         function setupHeaderEvents() {
-            const headers = document.querySelectorAll('#resultsTable th[data-sort]');
-            headers.forEach((header, index) => {
+            // 모든 헤더 선택 (data-sort 있는 것과 없는 것 모두)
+            const allHeaders = document.querySelectorAll('#resultsTable th');
+            
+            allHeaders.forEach((header, index) => {
                 // 기존 이벤트 리스너 제거 (중복 방지)
                 const newHeader = header.cloneNode(true);
                 header.parentNode.replaceChild(newHeader, header);
@@ -3985,7 +3987,7 @@
                 newHeader.addEventListener('contextmenu', function(e) {
                     e.preventDefault();
                     
-                    // N열(첫 번째 열)인지 확인
+                    // N열(첫 번째 열, index 0)인지 확인
                     if (index === 0) {
                         showColumnVisibilityMenu(e);
                     } else {
@@ -3998,8 +4000,10 @@
                     }
                 });
                 
-                // 헤더 스타일 업데이트 (정렬 상태 표시)
-                updateHeaderStyle(newHeader);
+                // 정렬 가능한 헤더만 스타일 업데이트
+                if (header.dataset.sort) {
+                    updateHeaderStyle(newHeader);
+                }
             });
         }
         
@@ -4193,7 +4197,7 @@
             menuItems.push('<div class="context-menu-separator"></div>');
             
             // 개별 컬럼 체크박스 (N열 제외)
-            const headers = ['인네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
+            const headers = ['썸네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
             
             headers.forEach((headerText, index) => {
                 const columnIndex = index + 1; // N열(0)을 제외하므로 +1
@@ -4256,7 +4260,7 @@
         // 전체 컬럼 표시/숨김
         function toggleAllColumns(show) {
             const table = document.getElementById('resultsTable');
-            const headers = ['인네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
+            const headers = ['썸네일', '채널명', '제목', '게시일', '구독자 수', '조회수', '채널 기여도', '성과도 배율', 'CII', '영상 길이', '좋아요 수', '댓글 수', '참여율', '이 영상 수', '자막', '설명'];
             
             headers.forEach((headerText, index) => {
                 const columnIndex = index + 1; // N열(0) 제외
