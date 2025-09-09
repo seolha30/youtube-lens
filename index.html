@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1230,16 +1231,6 @@
                 </div>
             </div>
             <div class="header-buttons">
-                <!-- 인증 상태 표시 (인증 후에만 표시) -->
-                <div id="authStatusDisplay" style="display: none; align-items: center; gap: 10px; margin-right: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 15px; font-size: 12px; color: white; font-weight: bold;">
-                        <span id="authCountdown">59:59</span> 남음
-                    </div>
-                    <button onclick="logout()" style="background: rgba(70,70,70,0.8); border: 1px solid rgba(90,90,90,0.6); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; cursor: pointer; font-weight: bold;">
-                        로그아웃
-                    </button>
-                </div>
-                
                 <a href="https://www.youtube.com/@튜브렌즈" target="_blank" class="header-btn youtube">
                     📺 튜브렌즈 유튜브
                 </a>
@@ -1791,12 +1782,15 @@
         let isVideoSearch = true;
         let videoDescriptions = {}; // 비디오 설명 저장용
         let currentVideoId = null; // 현재 비디오 ID 저장
-        let authTimer = null; // 인증 타이머
-        let authTimeLeft = 0; // 남은 인증 시간 (초)
 
         // DOM 요소들
         const authModal = document.getElementById('authModal');
-
+        const authBadge = document.getElementById('auth-badge');
+        const authInfo = document.getElementById('auth-info');
+        const licenseInput = document.getElementById('license-input');
+        const authBtn = document.getElementById('auth-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const continueBtn = document.getElementById('continue-btn');
 
         // 현재 사용 중인 API 키 반환 (로테이션 지원)
         function getCurrentApiKey() {
@@ -1970,87 +1964,45 @@
             }
         }
 
-        // UI 업데이트 함수 (새로운 모달 시스템용으로 단순화)
+        // UI 업데이트 함수
         function updateAuthUI(authResult) {
             if (authResult.valid) {
+                // 인증 성공
+                authBadge.textContent = '인증됨';
+                authBadge.className = 'status-badge status-authenticated';
+                authBadge.classList.remove('pulse');
+                authInfo.textContent = authResult.message;
+                
+                // 인증 관련 UI 숨기기
+                licenseInput.style.display = 'none';
+                authBtn.style.display = 'none';
+                logoutBtn.classList.remove('hidden');
+                continueBtn.classList.remove('hidden');
+                
                 userAuthenticated = true;
-                console.log('인증 성공:', authResult.message);
+                
             } else {
+                // 인증 실패
+                if (authResult.expired) {
+                    authBadge.textContent = '만료됨';
+                    authBadge.className = 'status-badge status-expired pulse';
+                } else {
+                    authBadge.textContent = '미인증';
+                    authBadge.className = 'status-badge status-invalid pulse';
+                }
+                
+                authInfo.textContent = authResult.message;
+                
+                // 인증 관련 UI 표시
+                licenseInput.style.display = 'block';
+                authBtn.style.display = 'block';
+                logoutBtn.classList.add('hidden');
+                continueBtn.classList.add('hidden');
+                
                 userAuthenticated = false;
-                console.log('인증 실패:', authResult.message);
             }
         }
 
-        // 인증 타이머 시작
-        function startAuthTimer() {
-            const authTimestamp = localStorage.getItem('authTimestamp');
-            if (!authTimestamp) return;
-            
-            const elapsed = Date.now() - parseInt(authTimestamp);
-            const remaining = 3600000 - elapsed; // 1시간 - 경과시간
-            
-            if (remaining <= 0) {
-                autoLogout();
-                return;
-            }
-            
-            authTimeLeft = Math.floor(remaining / 1000); // 초 단위로 변환
-            
-            // UI 표시
-            document.getElementById('authStatusDisplay').style.display = 'flex';
-            
-            // 타이머 시작
-            authTimer = setInterval(() => {
-                authTimeLeft--;
-                updateCountdownDisplay();
-                
-                if (authTimeLeft <= 0) {
-                    autoLogout();
-                }
-            }, 1000);
-            
-            updateCountdownDisplay();
-        }
-
-        // 카운트다운 표시 업데이트
-        function updateCountdownDisplay() {
-            const minutes = Math.floor(authTimeLeft / 60);
-            const seconds = authTimeLeft % 60;
-            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            const countdownEl = document.getElementById('authCountdown');
-            if (countdownEl) {
-                countdownEl.textContent = timeString;
-                
-                // 5분 이하일 때 빨간색으로 경고
-                if (authTimeLeft <= 300) {
-                    countdownEl.style.color = '#ff6b6b';
-                    countdownEl.parentElement.style.background = 'rgba(255,107,107,0.3)';
-                }
-            }
-        }
-
-        // 자동 로그아웃
-        function autoLogout() {
-            clearInterval(authTimer);
-            localStorage.removeItem('licenseKey');
-            localStorage.removeItem('authResult');
-            localStorage.removeItem('authTimestamp');
-            localStorage.removeItem('userType');
-            
-            userAuthenticated = false;
-            document.getElementById('authStatusDisplay').style.display = 'none';
-            
-            alert('인증 시간이 만료되었습니다. 다시 로그인해주세요.');
-            location.reload(); // 페이지 새로고침하여 인증 모달 표시
-        }
-
-        // 수동 로그아웃
-        function logout() {
-            if (confirm('로그아웃 하시겠습니까?')) {
-                autoLogout();
-            }
-        }
         // Google Apps Script 배포 URL (구글시트 검증용)
         const SHEET_API_ENDPOINT = 'https://script.google.com/macros/s/AKfycby-fQmIj_2jovtXGD488uOyP1EzVaPaXhXXgzwyFVK48FXvpJoFcdqXfzVaX_nlt7qe2A/exec';
 
@@ -2321,14 +2273,9 @@
             const authTimestamp = localStorage.getItem('authTimestamp');
             
             if (savedLicenseKey) {
-                // 새로운 모달 시스템의 입력 필드들에 저장된 값 설정
-                const paidLicenseInput = document.getElementById('paidLicense');
-                const freeLicenseInput = document.getElementById('freeLicense');
-                if (paidLicenseInput) paidLicenseInput.value = savedLicenseKey;
-                if (freeLicenseInput) freeLicenseInput.value = savedLicenseKey;
+                licenseInput.value = savedLicenseKey;
                 
-                
-                // 캐시된 인증 사용
+                // 캐시된 인증 결과가 있고 1시간 이내면 사용
                 if (savedAuthResult && authTimestamp) {
                     const timeDiff = Date.now() - parseInt(authTimestamp);
                     if (timeDiff < 3600000) { // 1시간
@@ -2337,10 +2284,6 @@
                         updateAuthUI(authResult);
                         
                         if (authResult.valid) {
-                            // 인증 성공시 모달 닫기
-                            authModal.style.display = 'none';
-                            document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
-                            startAuthTimer(); // 타이머 시작
                             return; // 인증 완료
                         }
                     }
@@ -2350,23 +2293,16 @@
                 console.log('🔄 인증 상태 재확인');
                 const authResult = await checkLicense(savedLicenseKey);
                 updateAuthUI(authResult);
-
+                
                 if (authResult.valid) {
                     localStorage.setItem('authResult', JSON.stringify(authResult));
                     localStorage.setItem('authTimestamp', Date.now().toString());
-                    
-                    // 인증 성공 시 모달 닫고 메인 화면으로 이동
-                    authModal.style.display = 'none';
-                    document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
-                    return; // 인증 완료되었으므로 함수 종료
                 }
             } else {
                 updateAuthUI({
                     valid: false,
-                    message: '인증키를 입력하세요'
+                    message: '인증키를 아래에 입력하세요'
                 });
-                // 인증이 필요하므로 모달 표시
-                authModal.style.display = 'block';
             }
         }
 
