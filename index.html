@@ -2264,6 +2264,7 @@
                     if (authResult.valid) {
                         userAuthenticated = true;
                         document.getElementById('authModal').style.display = 'none';
+                        showAuthStatus();
                         return;
                     }
                 }
