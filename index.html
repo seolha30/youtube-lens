@@ -4388,7 +4388,6 @@
         }
         // 영상길이 필터 모달 표시
         function showDurationFilterModal() {
-            // 기존 모달 제거
             const existingModal = document.getElementById('durationFilterModal');
             if (existingModal) {
                 existingModal.remove();
@@ -4396,42 +4395,38 @@
             
             const modalHtml = `
                 <div class="settings-modal" id="durationFilterModal" style="display: block;">
-                    <div class="settings-content" style="max-width: 400px; background: #2a2a2a;">
+                    <div class="settings-content" style="max-width: 350px; background: #1a1a1a; border-radius: 10px; color: white;">
                         <button class="close-btn" onclick="closeDurationFilterModal()">&times;</button>
-                        <h3 style="margin-bottom: 20px; color: #4a9eff; text-align: center;">⏱️ 영상길이 선택</h3>
+                        <h3 style="margin-bottom: 25px; color: #4a9eff; text-align: center; font-size: 18px;">영상길이 선택</h3>
                         
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 8px; color: #ccc; font-size: 14px;">영상길이 (분)</label>
+                            <label style="display: block; margin-bottom: 8px; color: white; font-size: 13px;">영상길이 (분)</label>
                             <input type="number" id="durationMinutes" min="0" max="1440" 
-                                style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; color: white; font-size: 16px;"
+                                style="width: 100%; padding: 10px; background-color: #2d2d2d; border: 1px solid #4a9eff; border-radius: 5px; color: white; font-size: 14px; box-sizing: border-box;"
                                 placeholder="예: 10">
                         </div>
                         
                         <div style="margin-bottom: 25px;">
-                            <label style="display: block; margin-bottom: 8px; color: #ccc; font-size: 14px;">조건</label>
-                            <div style="display: flex; gap: 10px;">
+                            <label style="display: block; margin-bottom: 8px; color: white; font-size: 13px;">조건</label>
+                            <div style="display: flex; gap: 8px;">
                                 <button id="durationAbove" onclick="selectDurationCondition('이상')" 
-                                        style="flex: 1; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+                                        style="flex: 1; padding: 10px; background-color: #4a9eff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; min-width: 120px;">
                                     이상
                                 </button>
                                 <button id="durationBelow" onclick="selectDurationCondition('이하')" 
-                                        style="flex: 1; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+                                        style="flex: 1; padding: 10px; background-color: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; min-width: 120px;">
                                     이하
                                 </button>
                             </div>
                         </div>
                         
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 8px;">
                             <button onclick="applyDurationFilter()" 
-                                    style="flex: 1; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                                적용
-                            </button>
-                            <button onclick="clearDurationFilter()" 
-                                    style="flex: 1; padding: 12px; background: #f44336; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                                해제
+                                    style="flex: 1; padding: 10px 20px; background-color: #4a9eff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; min-width: 120px;">
+                                확인
                             </button>
                             <button onclick="closeDurationFilterModal()" 
-                                    style="flex: 1; padding: 12px; background: #666; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                    style="flex: 1; padding: 10px 20px; background-color: #666; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; min-width: 120px;">
                                 취소
                             </button>
                         </div>
@@ -4441,12 +4436,12 @@
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
-            // 기존 값이 있으면 복원
             if (durationFilterActive) {
                 document.getElementById('durationMinutes').value = durationFilterMinutes;
                 selectDurationCondition(durationFilterCondition);
             }
         }
+
 
         // 영상길이 조건 선택
         function selectDurationCondition(condition) {
