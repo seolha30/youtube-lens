@@ -4437,37 +4437,14 @@
         }
 
 
-        // 영상길이 조건 선택
-        function selectDurationCondition(condition) {
-            const aboveBtn = document.getElementById('durationAbove');
-            const belowBtn = document.getElementById('durationBelow');
-            
-            // 모든 버튼 초기화
-            aboveBtn.style.backgroundColor = '#333';
-            belowBtn.style.backgroundColor = '#333';
-            
-            // 선택된 버튼 강조
-            if (condition === '이상') {
-                aboveBtn.style.backgroundColor = '#4a9eff';
-            } else {
-                belowBtn.style.backgroundColor = '#4a9eff';
-            }
-            
-            window.selectedDurationCondition = condition;
-        }
-
+        
         // 영상길이 필터 적용
         function applyDurationFilter() {
             const minutes = parseInt(document.getElementById('durationMinutes').value);
-            const condition = window.selectedDurationCondition;
+            const condition = document.getElementById('durationCondition').value;
             
             if (!minutes || minutes <= 0) {
                 alert('올바른 시간(분)을 입력해주세요.');
-                return;
-            }
-            
-            if (!condition) {
-                alert('조건을 선택해주세요.');
                 return;
             }
             
