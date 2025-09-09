@@ -2414,11 +2414,11 @@
                     userAuthenticated = true;
                     showSuccess(type, name);
                     
-                    // 로컬 스토리지에 저장
-                    localStorage.setItem('licenseKey', licenseKey);
-                    localStorage.setItem('authResult', JSON.stringify(licenseResult));
-                    localStorage.setItem('authTimestamp', Date.now().toString());
-                    localStorage.setItem('userType', type);
+                    // 세션 스토리지에 저장 (브라우저 닫으면 삭제)
+                    sessionStorage.setItem('licenseKey', licenseKey);
+                    sessionStorage.setItem('authResult', JSON.stringify(licenseResult));
+                    sessionStorage.setItem('authTimestamp', Date.now().toString());
+                    sessionStorage.setItem('userType', type);
                     
                 } else if (!userValid && licenseResult.valid) {
                     // 사용자 정보만 실패
@@ -2495,8 +2495,8 @@
             initializeApiKeys();
             
             // 저장된 세션 확인
-            const savedSessionStart = localStorage.getItem('sessionStartTime');
-            const savedAuthStatus = localStorage.getItem('userAuthenticated');
+            const savedSessionStart = sessionStorage.getItem('sessionStartTime');
+            const savedAuthStatus = sessionStorage.getItem('userAuthenticated');
             
             if (savedSessionStart && savedAuthStatus === 'true') {
                 const savedStartTime = parseInt(savedSessionStart);
@@ -4443,9 +4443,9 @@
             sessionStartTime = Date.now();
             userAuthenticated = true;
             
-            // 세션 정보를 localStorage에 저장
-            localStorage.setItem('sessionStartTime', sessionStartTime.toString());
-            localStorage.setItem('userAuthenticated', 'true');
+            // 세션 정보를 sessionStorage에 저장
+            sessionStorage.setItem('sessionStartTime', sessionStartTime.toString());
+            sessionStorage.setItem('userAuthenticated', 'true');
             
             // 로그아웃 섹션 표시
             const logoutSection = document.getElementById('logoutSection');
@@ -4530,9 +4530,13 @@
             logoutWarningShown = false;
             userAuthenticated = false;
             
-            // localStorage에서 세션 정보 삭제
-            localStorage.removeItem('sessionStartTime');
-            localStorage.removeItem('userAuthenticated');
+            // sessionStorage에서 세션 정보 삭제
+            sessionStorage.removeItem('sessionStartTime');
+            sessionStorage.removeItem('userAuthenticated');
+            sessionStorage.removeItem('licenseKey');
+            sessionStorage.removeItem('authResult');
+            sessionStorage.removeItem('authTimestamp');
+            sessionStorage.removeItem('userType');
             
             // 로그아웃 섹션 숨기기
             const logoutSection = document.getElementById('logoutSection');
