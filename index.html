@@ -2245,7 +2245,8 @@
                 if (paidLicenseInput) paidLicenseInput.value = savedLicenseKey;
                 if (freeLicenseInput) freeLicenseInput.value = savedLicenseKey;
                 
-                // 캐시된 인증 결과가 있고 1시간 이내면 사용
+                
+                // 캐시된 인증 사용
                 if (savedAuthResult && authTimestamp) {
                     const timeDiff = Date.now() - parseInt(authTimestamp);
                     if (timeDiff < 3600000) { // 1시간
@@ -2254,6 +2255,9 @@
                         updateAuthUI(authResult);
                         
                         if (authResult.valid) {
+                            // 인증 성공시 모달 닫기
+                            authModal.style.display = 'none';
+                            document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
                             return; // 인증 완료
                         }
                     }
