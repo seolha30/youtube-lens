@@ -2053,7 +2053,7 @@
         // 에러 메시지 표시
         function showError(type, message) {
             const errorEl = document.getElementById(`${type}Error`);
-            errorEl.textContent = message;
+            errorEl.innerHTML = message;
             errorEl.style.display = 'block';
         }
 
@@ -2182,13 +2182,13 @@
                     
                 } else if (!userValid && licenseResult.valid) {
                     // 사용자 정보만 실패
-                    showError(type, `등록된 ${type === 'paid' ? '이름/연락처' : '이름/이메일'} 정보와 일치하지 않습니다. 입력하신 정보를 다시 확인해주세요.`);
+                    showError(type, `등록된 ${type === 'paid' ? '이름/연락처' : '이름/이메일'} 정보와 일치하지 않습니다.<br>입력하신 정보를 다시 확인해주세요.`);
                 } else if (userValid && !licenseResult.valid) {
                     // 인증키만 실패
-                    showError(type, `인증키가 올바르지 않습니다: ${licenseResult.message}`);
+                    showError(type, `인증키가 올바르지 않습니다:<br>${licenseResult.message}`);
                 } else {
                     // 둘 다 실패
-                    showError(type, `사용자 정보와 인증키가 모두 일치하지 않습니다. 입력하신 정보를 다시 확인해주세요.`);
+                    showError(type, `사용자 정보와 인증키가 모두 일치하지 않습니다.<br>입력하신 정보를 다시 확인해주세요.`);
                 }
                 
             } catch (error) {
