@@ -1893,6 +1893,9 @@
             } else if (sortType === 'duration') {
                 menuItems.push(createMenuItem('longest', '긴순', sortField, 'desc'));
                 menuItems.push(createMenuItem('shortest', '짧은순', sortField, 'asc'));
+                // 영상길이 선택 옵션 추가
+                menuItems.push(`<div class="context-menu-header">영상길이 필터</div>`);
+                menuItems.push(createMenuItem('duration-filter', '영상길이 선택', null, null));
             }
             
             menuItems.push(createMenuItem('clear', '정렬해제', null, null));
@@ -1911,6 +1914,8 @@
                     
                     if (action === 'clear') {
                         clearSort();
+                    } else if (action === 'duration-filter') {
+                        showDurationFilterModal();
                     } else {
                         applySorting(field, direction);
                     }
@@ -1919,7 +1924,6 @@
                 });
             });
         }
-        
         // 메뉴 항목 생성 함수
         function createMenuItem(action, label, field, direction) {
             const isActive = currentSortColumn === field && currentSortDirection === direction;
@@ -2054,6 +2058,10 @@
             viewCount: '',
             subscriberCount: ''
         };
+        // 영상길이 필터 변수 추가
+        let durationFilterActive = false;
+        let durationFilterMinutes = null;
+        let durationFilterCondition = null; // '이상' 또는 '이하'
         let isViewsSort = true;
         let isAllVideos = true;
         let isVideoSearch = true;
@@ -3059,7 +3067,8 @@
                 currentFilters.ciiGood || 
                 currentFilters.ciiSoso || 
                 viewCountFilter || 
-                subscriberCountFilter;
+                subscriberCountFilter ||
+                durationFilterActive; // 영상길이 필터 추가
         }
 
         // 필터 자동 적용 함수
@@ -3083,7 +3092,11 @@
             const filters = {
                 ...currentFilters,
                 viewCount: document.getElementById('viewCountFilter').value,
-                subscriberCount: document.getElementById('subscriberCountFilter').value
+                subscriberCount: document.getElementById('subscriberCountFilter').value,
+                // 영상길이 필터 추가
+                durationFilterActive: durationFilterActive,
+                durationFilterMinutes: durationFilterMinutes,
+                durationFilterCondition: durationFilterCondition
             };
             
             try {
@@ -3116,6 +3129,10 @@
                 viewCount: '',
                 subscriberCount: ''
             };
+            // 영상길이 필터도 초기화
+            durationFilterActive = false;
+            durationFilterMinutes = null;
+            durationFilterCondition = null;
             
             // UI 초기화
             document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -4366,6 +4383,135 @@
         // 비디오 모달 닫기
         function closeVideoModal() {
             const modal = document.getElementById('videoModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        // 영상길이 필터 모달 표시
+        function showDurationFilterModal() {
+            // 기존 모달 제거
+            const existingModal = document.getElementById('durationFilterModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            const modalHtml = `
+                <div class="settings-modal" id="durationFilterModal" style="display: block;">
+                    <div class="settings-content" style="max-width: 400px; background: #2a2a2a;">
+                        <button class="close-btn" onclick="closeDurationFilterModal()">&times;</button>
+                        <h3 style="margin-bottom: 20px; color: #4a9eff; text-align: center;">⏱️ 영상길이 선택</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; color: #ccc; font-size: 14px;">영상길이 (분)</label>
+                            <input type="number" id="durationMinutes" min="0" max="1440" 
+                                style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; color: white; font-size: 16px;"
+                                placeholder="예: 10">
+                        </div>
+                        
+                        <div style="margin-bottom: 25px;">
+                            <label style="display: block; margin-bottom: 8px; color: #ccc; font-size: 14px;">조건</label>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="durationAbove" onclick="selectDurationCondition('이상')" 
+                                        style="flex: 1; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+                                    이상
+                                </button>
+                                <button id="durationBelow" onclick="selectDurationCondition('이하')" 
+                                        style="flex: 1; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+                                    이하
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="applyDurationFilter()" 
+                                    style="flex: 1; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                적용
+                            </button>
+                            <button onclick="clearDurationFilter()" 
+                                    style="flex: 1; padding: 12px; background: #f44336; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                해제
+                            </button>
+                            <button onclick="closeDurationFilterModal()" 
+                                    style="flex: 1; padding: 12px; background: #666; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // 기존 값이 있으면 복원
+            if (durationFilterActive) {
+                document.getElementById('durationMinutes').value = durationFilterMinutes;
+                selectDurationCondition(durationFilterCondition);
+            }
+        }
+
+        // 영상길이 조건 선택
+        function selectDurationCondition(condition) {
+            const aboveBtn = document.getElementById('durationAbove');
+            const belowBtn = document.getElementById('durationBelow');
+            
+            // 모든 버튼 초기화
+            aboveBtn.style.backgroundColor = '#333';
+            belowBtn.style.backgroundColor = '#333';
+            
+            // 선택된 버튼 강조
+            if (condition === '이상') {
+                aboveBtn.style.backgroundColor = '#4a9eff';
+            } else {
+                belowBtn.style.backgroundColor = '#4a9eff';
+            }
+            
+            window.selectedDurationCondition = condition;
+        }
+
+        // 영상길이 필터 적용
+        function applyDurationFilter() {
+            const minutes = parseInt(document.getElementById('durationMinutes').value);
+            const condition = window.selectedDurationCondition;
+            
+            if (!minutes || minutes <= 0) {
+                alert('올바른 시간(분)을 입력해주세요.');
+                return;
+            }
+            
+            if (!condition) {
+                alert('조건을 선택해주세요.');
+                return;
+            }
+            
+            durationFilterActive = true;
+            durationFilterMinutes = minutes;
+            durationFilterCondition = condition;
+            
+            closeDurationFilterModal();
+            
+            // 필터 적용
+            applyFilters();
+            
+            updateStatus(`영상길이 필터 적용: ${minutes}분 ${condition}`);
+        }
+
+        // 영상길이 필터 해제
+        function clearDurationFilter() {
+            durationFilterActive = false;
+            durationFilterMinutes = null;
+            durationFilterCondition = null;
+            
+            closeDurationFilterModal();
+            
+            // 필터 재적용
+            applyFilters();
+            
+            updateStatus('영상길이 필터가 해제되었습니다');
+        }
+
+        // 영상길이 필터 모달 닫기
+        function closeDurationFilterModal() {
+            const modal = document.getElementById('durationFilterModal');
             if (modal) {
                 modal.remove();
             }
