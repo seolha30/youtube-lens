@@ -404,7 +404,7 @@
 
         /* 워터마크 스타일 */
         .table-watermark {
-            position: fixed;
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -1708,9 +1708,6 @@
 
         <!-- 메인 콘텐츠 -->
         <div class="main-content">
-            <!-- 워터마크 (화면 고정) -->
-            <div id="tableWatermark" class="table-watermark"></div>
-            
             <!-- 상단 도구바 -->
             <div class="toolbar">
                 <div class="toolbar-group" style="flex: 1;">
@@ -1721,6 +1718,9 @@
 
             <!-- 검색 결과 테이블 -->
             <div class="results-container">
+                <!-- 워터마크 (테이블 중앙 고정) -->
+                <div id="tableWatermark" class="table-watermark"></div>
+                
                 <div id="loadingIndicator" class="loading" style="display: none;">
                     <div class="loading-spinner"></div>
                     <div>YouTube 데이터를 분석 중입니다...</div>
