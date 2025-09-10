@@ -399,6 +399,29 @@
             flex: 1;
             overflow: auto;
             background: #f8f9fa;
+            position: relative;
+        }
+
+        /* 워터마크 스타일 */
+        .table-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 300px;
+            background-image: url('https://raw.githubusercontent.com/seolha30/for_tube/main/tubelens.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none;
+            z-index: 10;
+            transition: opacity 0.5s ease;
+            opacity: 0.8;
+        }
+
+        .table-watermark.faded {
+            opacity: 0.3;
         }
 
         .results-table {
@@ -1695,6 +1718,9 @@
 
             <!-- 검색 결과 테이블 -->
             <div class="results-container">
+                <!-- 워터마크 -->
+                <div id="tableWatermark" class="table-watermark"></div>
+                
                 <div id="loadingIndicator" class="loading" style="display: none;">
                     <div class="loading-spinner"></div>
                     <div>YouTube 데이터를 분석 중입니다...</div>
@@ -3187,7 +3213,7 @@
             }
         }
 
-        // 결과 삭제 함수
+        // 결과 삭제 함수 (워터마크 제어 추가)
         function clearResults() {
             if (!requireAuth('결과 삭제')) return;
             
@@ -3196,6 +3222,7 @@
             document.getElementById('resultsBody').innerHTML = '';
             document.getElementById('searchKeyword').value = '';
             showLoading(false);
+            showWatermark(); // 결과 삭제 시 워터마크를 진하게 표시
             updateStatus('결과가 삭제되었습니다');
         }
 
@@ -3229,7 +3256,30 @@
             document.getElementById('statusBar').textContent = message;
         }
 
-        // 결과 표시 함수
+        // 워터마크 제어 함수들
+        function showWatermark() {
+            const watermark = document.getElementById('tableWatermark');
+            if (watermark) {
+                watermark.style.display = 'block';
+                watermark.classList.remove('faded');
+            }
+        }
+
+        function fadeWatermark() {
+            const watermark = document.getElementById('tableWatermark');
+            if (watermark) {
+                watermark.classList.add('faded');
+            }
+        }
+
+        function hideWatermark() {
+            const watermark = document.getElementById('tableWatermark');
+            if (watermark) {
+                watermark.style.display = 'none';
+            }
+        }
+
+        // 결과 표시 함수 (워터마크 제어 추가)
         function displayResults(results) {
             const tbody = document.getElementById('resultsBody');
             tbody.innerHTML = '';
@@ -3238,6 +3288,7 @@
                 document.getElementById('noResults').style.display = 'block';
                 document.getElementById('resultsTable').style.display = 'none';
                 showLoading(false);
+                showWatermark(); // 결과가 없으면 워터마크를 진하게 표시
                 return;
             }
             
@@ -3249,6 +3300,7 @@
             document.getElementById('resultsTable').style.display = 'table';
             document.getElementById('noResults').style.display = 'none';
             showLoading(false);
+            fadeWatermark(); // 결과가 있으면 워터마크를 연하게 표시
         }
 
         // 결과 행 생성 함수
@@ -3931,6 +3983,9 @@
         
         // 초기화
         document.addEventListener('DOMContentLoaded', async function() {
+            // 워터마크 초기 표시
+            showWatermark();
+            
             // 인증 시스템 초기화
             await initializeAuth();
             // 번역 기능 핸들러 설정
