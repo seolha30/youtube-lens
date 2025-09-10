@@ -2865,10 +2865,7 @@
             }
             
             const keyword = document.getElementById('searchKeyword').value.trim();
-            if (!keyword) {
-                alert('검색할 키워드를 입력해주세요.');
-                return;
-            }
+        // 키워드가 없어도 검색 가능 (전체 영상 검색)
             
             showLoading(true);
             
