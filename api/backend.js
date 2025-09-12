@@ -36,6 +36,8 @@ export default async function handler(req, res) {
                 return await handleChannelVideos(req, res);
             case 'channelSearch':
                 return await handleChannelSearch(req, res);
+            case 'adminAuth':
+                return await handleAdminAuth(req, res);
             default:
                 res.status(400).json({ 
                     success: false, 
@@ -1489,7 +1491,56 @@ async function searchChannelByName(channelName, regionCode, apiKeys, startApiKey
     }
 }
 
-
+// 관리자 인증 처리 함수
+async function handleAdminAuth(req, res) {
+    const { adminId, adminPassword } = req.method === 'GET' ? req.query : req.body;
+    
+    console.log('🔒 관리자 인증 시도:', { adminId });
+    
+    try {
+        // 관리자 계정 정보 (백엔드에서만 저장)
+        const ADMIN_ACCOUNTS = {
+            'seolha30': 'lie4784478'
+        };
+        
+        // 입력값 검증
+        if (!adminId || !adminPassword) {
+            return res.status(400).json({
+                success: false,
+                message: '아이디와 비밀번호를 모두 입력해주세요.'
+            });
+        }
+        
+        // 관리자 계정 확인
+        if (ADMIN_ACCOUNTS[adminId] && ADMIN_ACCOUNTS[adminId] === adminPassword) {
+            console.log('✅ 관리자 인증 성공:', adminId);
+            
+            res.status(200).json({
+                success: true,
+                data: {
+                    adminId: adminId,
+                    loginTime: new Date().toISOString(),
+                    privileges: ['unlimited_session', 'full_access']
+                },
+                message: '관리자 인증이 완료되었습니다.'
+            });
+        } else {
+            console.log('❌ 관리자 인증 실패:', adminId);
+            
+            res.status(401).json({
+                success: false,
+                message: '관리자 아이디 또는 비밀번호가 올바르지 않습니다.'
+            });
+        }
+        
+    } catch (error) {
+        console.error('관리자 인증 처리 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '관리자 인증 처리 중 서버 오류가 발생했습니다.'
+        });
+    }
+}
 // 유틸리티 함수들 (test.html과 완전 동일, null 체크 추가)
 function formatDuration(duration) {
     if (!duration) return '0:00';
