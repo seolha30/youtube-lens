@@ -2149,14 +2149,23 @@
             return seconds;
         }
 
-        // 🛡️ sessionStorage 조작 감지
+        // 🛡️ sessionStorage 조작 감지 (개선된 버전)
+        let loginInProgress = false;
         const originalSetItem = sessionStorage.setItem;
         sessionStorage.setItem = function(key, value) {
-            if (userAuthenticated && (key === 'sessionStartTime' || key === 'userAuthenticated')) {
+            // 로그인 중이거나 아직 인증되지 않은 상태에서는 허용
+            if (!userAuthenticated || loginInProgress) {
+                originalSetItem.call(this, key, value);
+                return;
+            }
+            
+            // 이미 로그인된 상태에서 시간/인증 관련 조작 감지
+            if (key === 'sessionStartTime' || key === 'userAuthenticated') {
                 alert('⚠️ 세션 조작이 감지되었습니다. 자동으로 로그아웃됩니다.');
                 performLogout();
                 return;
             }
+            
             originalSetItem.call(this, key, value);
         };
         
@@ -2429,6 +2438,7 @@
                 if (result.success) {
                     // 관리자 인증 성공
                     userAuthenticated = true;
+                    loginInProgress = true; 
                     showAdminSuccess();
                     
                     // 관리자 세션 저장 (토큰 포함)
@@ -2629,6 +2639,8 @@
                     sessionStorage.setItem('authResult', JSON.stringify(licenseResult));
                     sessionStorage.setItem('authTimestamp', Date.now().toString());
                     sessionStorage.setItem('userType', type);
+                    sessionStorage.setItem('userType', type);
+                    loginInProgress = false; // 로그인 완료, 플래그 해제
                     // 관리자 모드 확실히 해제
                     sessionStorage.removeItem('adminMode');
                     sessionStorage.removeItem('adminId');
