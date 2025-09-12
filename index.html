@@ -1801,11 +1801,11 @@
             <div class="auth-form" id="paidAuthForm" style="display: none;">
                 <div class="auth-info" style="text-align: center; padding: 12px; background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 8px; margin-bottom: 15px;">
                     <div style="font-size: 12px; color: rgba(255, 255, 255, 0.9); margin-bottom: 10px;">
-                        💎 구독제를 신청하지 않으셨나요?
+                        💎 월 구독제를 신청하지 않으셨나요?
                     </div>
                     <button type="button" onclick="window.open('https://tubelens-0o0opqa.gamma.site', '_blank')" 
                             style="background: linear-gradient(135deg, #FFD700, #FFA500); color: #333; border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);">
-                        💎 월 구독제 신청하기 💎
+                        💎 구독제 신청하기 💎
                     </button>
                 </div>
                 <div id="paidError" class="error-message" style="display: none; background: rgba(255, 255, 255, 0.9); border: 2px solid #ff4444; color: #cc0000; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; font-weight: 600;"></div>
@@ -1840,7 +1840,7 @@
                     </div>
                     <button type="button" onclick="window.open('https://tubelens-0o0opqa.gamma.site', '_blank')" 
                             style="background: linear-gradient(135deg, #FFD700, #FFA500); color: #333; border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);">
-                        ✨ 3일 무료 인증키 신청하기 ✨
+                        ✨ 3일 무료 인증키 신청 ✨
                     </button>
                 </div>
                 <div id="freeError" class="error-message" style="display: none; background: rgba(255, 255, 255, 0.9); border: 2px solid #ff4444; color: #cc0000; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; font-weight: 600;"></div>
@@ -1894,9 +1894,10 @@
             <!-- API 키 추가 섹션 -->
             <div class="form-group">
                 <label>새 API 키 추가</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="password" class="form-control" id="newApiKeyInput" placeholder="API 키를 입력하세요" style="flex: 1;">
-                    <button class="btn btn-success" onclick="addApiKey()">추가</button>
+                <div style="display: flex; gap: 8px;">
+                    <input type="password" class="form-control" id="newApiKeyInput" placeholder="API 키를 입력하세요" style="flex: 2;">
+                    <button class="btn btn-success" onclick="addApiKey()" style="min-width: 60px;">추가</button>
+                    <button class="btn" onclick="openApiKeyGenerate()" style="background: #4CAF50; color: white; min-width: 100px; font-size: 11px;">🔑 키 발급받기</button>
                 </div>
                 <small style="color: #888; font-size: 11px; margin-top: 5px; display: block;">
                     Google Cloud Console에서 발급받은 API 키를 입력하세요
@@ -2687,6 +2688,10 @@
             window.open('https://www.youtube.com/watch?v=1HPv97VwHFM&feature=youtu.be', '_blank');
         }
         
+        function openApiKeyGenerate() {
+            window.open('https://console.cloud.google.com/apis/library/youtube.googleapis.com', '_blank');
+        }
+
         // 기능 보호 함수
         function requireAuth(functionName) {
             if (!userAuthenticated) {
