@@ -2714,11 +2714,13 @@
                 const logoutSection = document.getElementById('logoutSection');
                 if (logoutSection) {
                     logoutSection.style.display = 'flex';
-                    // 타이머 영역 숨기기
-                    const sessionTimer = document.getElementById('sessionTimer');
-                    if (sessionTimer) {
-                        sessionTimer.style.display = 'none';
-                    }
+                }
+                
+                // 관리자는 무제한 시간 표시
+                const timerElement = document.getElementById('timerCountdown');
+                if (timerElement) {
+                    timerElement.textContent = '∞ 무제한';
+                    timerElement.className = 'timer-countdown';
                 }
                 
                 const adminId = sessionStorage.getItem('adminId') || '관리자';
@@ -5032,18 +5034,19 @@
             
             if (isAdminMode) {
                 document.getElementById('statusBar').textContent = '관리자 모드 - 무제한 사용';
-                // 관리자는 세션 타이머 없음
                 userAuthenticated = true;
                 
                 // 로그아웃 섹션 표시 (관리자용)
                 const logoutSection = document.getElementById('logoutSection');
                 if (logoutSection) {
                     logoutSection.style.display = 'flex';
-                    // 타이머 영역 숨기기
-                    const sessionTimer = document.getElementById('sessionTimer');
-                    if (sessionTimer) {
-                        sessionTimer.style.display = 'none';
-                    }
+                }
+                
+                // 관리자는 무제한 시간 표시
+                const timerElement = document.getElementById('timerCountdown');
+                if (timerElement) {
+                    timerElement.textContent = '∞ 무제한';
+                    timerElement.className = 'timer-countdown';
                 }
             } else {
                 document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
@@ -5073,6 +5076,17 @@
         
         // 세션 타이머 업데이트
         function updateSessionTimer() {
+            // 관리자 모드면 타이머 동작 안함
+            const isAdminMode = sessionStorage.getItem('adminMode') === 'true';
+            if (isAdminMode) {
+                const timerElement = document.getElementById('timerCountdown');
+                if (timerElement) {
+                    timerElement.textContent = '∞ 무제한';
+                    timerElement.className = 'timer-countdown';
+                }
+                return;
+            }
+            
             if (!sessionStartTime) return;
             
             const elapsed = Date.now() - sessionStartTime;
@@ -5156,6 +5170,7 @@
             if (logoutSection) {
                 logoutSection.style.display = 'none';
             }
+            
             
             // 결과 초기화
             originalResults = [];
