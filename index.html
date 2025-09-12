@@ -5134,6 +5134,7 @@
             const timerElement = document.getElementById('timerCountdown');
             if (timerElement) {
                 timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                timerElement.style.fontSize = '14px'; // 일반 사용자는 원래 크기
                 
                 // 색상 변경
                 timerElement.className = 'timer-countdown';
