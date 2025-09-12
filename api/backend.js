@@ -38,6 +38,8 @@ export default async function handler(req, res) {
                 return await handleChannelSearch(req, res);
             case 'adminAuth':
                 return await handleAdminAuth(req, res);
+            case 'checkAdmin':
+                return await handleCheckAdmin(req, res);
             default:
                 res.status(400).json({ 
                     success: false, 
@@ -1491,6 +1493,39 @@ async function searchChannelByName(channelName, regionCode, apiKeys, startApiKey
     }
 }
 
+// 관리자 권한 확인 함수
+async function handleCheckAdmin(req, res) {
+    const { adminId, adminToken } = req.method === 'GET' ? req.query : req.body;
+    
+    try {
+        const ADMIN_ACCOUNTS = {
+            'admin': 'tubelens123'
+        };
+        
+        const expectedToken = `ADMIN_TOKEN_${adminId}_TUBELENS`;
+        
+        if (ADMIN_ACCOUNTS[adminId] && adminToken === expectedToken) {
+            res.status(200).json({
+                success: true,
+                data: { isAdmin: true },
+                message: '관리자 권한 확인'
+            });
+        } else {
+            res.status(401).json({
+                success: false,
+                data: { isAdmin: false },
+                message: '권한 없음'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            data: { isAdmin: false },
+            message: '서버 오류'
+        });
+    }
+}
+
 // 관리자 인증 처리 함수
 async function handleAdminAuth(req, res) {
     const { adminId, adminPassword } = req.method === 'GET' ? req.query : req.body;
@@ -1515,10 +1550,13 @@ async function handleAdminAuth(req, res) {
         if (ADMIN_ACCOUNTS[adminId] && ADMIN_ACCOUNTS[adminId] === adminPassword) {
             console.log('✅ 관리자 인증 성공:', adminId);
             
+            const adminToken = `ADMIN_TOKEN_${adminId}_TUBELENS`;
+            
             res.status(200).json({
                 success: true,
                 data: {
                     adminId: adminId,
+                    adminToken: adminToken,
                     loginTime: new Date().toISOString(),
                     privileges: ['unlimited_session', 'full_access']
                 },
