@@ -2722,6 +2722,7 @@
                 if (timerElement) {
                     timerElement.textContent = '∞ 무제한';
                     timerElement.className = 'timer-countdown';
+                    timerElement.style.fontSize = '12px';
                 }
                 
                 const adminId = sessionStorage.getItem('adminId') || '관리자';
@@ -5048,6 +5049,7 @@
                 if (timerElement) {
                     timerElement.textContent = '∞ 무제한';
                     timerElement.className = 'timer-countdown';
+                    timerElement.style.fontSize = '12px';
                 }
             } else {
                 document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
@@ -5103,6 +5105,7 @@
                         if (timerElement) {
                             timerElement.textContent = '∞ 무제한';
                             timerElement.className = 'timer-countdown';
+                            timerElement.style.fontSize = '12px';
                         }
                     } else {
                         alert('관리자 권한이 만료되었습니다.');
