@@ -2417,11 +2417,12 @@
                     userAuthenticated = true;
                     showAdminSuccess();
                     
-                    // 관리자 세션 저장 (무제한)
+                    // 관리자 세션 저장 (토큰 포함)
                     sessionStorage.setItem('adminMode', 'true');
                     sessionStorage.setItem('userAuthenticated', 'true');
                     sessionStorage.setItem('userType', 'admin');
                     sessionStorage.setItem('adminId', adminId);
+                    sessionStorage.setItem('adminToken', result.data.adminToken);
                     sessionStorage.setItem('adminLoginTime', Date.now().toString());
                     
                     console.log('✅ 관리자 로그인 성공:', result.data);
@@ -5074,16 +5075,40 @@
             }
         }
         
+        // 백엔드에서 관리자 권한 확인
+        async function checkAdminPermission(adminId, adminToken) {
+            try {
+                const result = await callBackendAPI('checkAdmin', {
+                    adminId: adminId,
+                    adminToken: adminToken
+                });
+                return result.success && result.data.isAdmin;
+            } catch (error) {
+                console.error('관리자 권한 확인 실패:', error);
+                return false;
+            }
+        }
+        
         // 세션 타이머 업데이트
         function updateSessionTimer() {
-            // 관리자 모드면 타이머 동작 안함
+            // 관리자 모드면 타이머 동작 안함 (백엔드 확인)
             const isAdminMode = sessionStorage.getItem('adminMode') === 'true';
-            if (isAdminMode) {
-                const timerElement = document.getElementById('timerCountdown');
-                if (timerElement) {
-                    timerElement.textContent = '∞ 무제한';
-                    timerElement.className = 'timer-countdown';
-                }
+            const adminId = sessionStorage.getItem('adminId');
+            const adminToken = sessionStorage.getItem('adminToken');
+            
+            if (isAdminMode && adminId && adminToken) {
+                checkAdminPermission(adminId, adminToken).then(isRealAdmin => {
+                    if (isRealAdmin) {
+                        const timerElement = document.getElementById('timerCountdown');
+                        if (timerElement) {
+                            timerElement.textContent = '∞ 무제한';
+                            timerElement.className = 'timer-countdown';
+                        }
+                    } else {
+                        alert('관리자 권한이 만료되었습니다.');
+                        performLogout();
+                    }
+                });
                 return;
             }
             
