@@ -2149,6 +2149,26 @@
             return seconds;
         }
 
+        // 🛡️ sessionStorage 조작 감지 (개선된 버전)
+        let loginInProgress = false;
+        const originalSetItem = sessionStorage.setItem;
+        sessionStorage.setItem = function(key, value) {
+            // 로그인 중이거나 아직 인증되지 않은 상태에서는 허용
+            if (!userAuthenticated || loginInProgress) {
+                originalSetItem.call(this, key, value);
+                return;
+            }
+            
+            // 이미 로그인된 상태에서 시간/인증 관련 조작 감지
+            if (key === 'sessionStartTime' || key === 'userAuthenticated') {
+                alert('⚠️ 세션 조작이 감지되었습니다. 자동으로 로그아웃됩니다.');
+                performLogout();
+                return;
+            }
+            
+            originalSetItem.call(this, key, value);
+        };
+        
         // 전역 변수들
         let userAuthenticated = false;
         let authCache = null;
@@ -2157,6 +2177,9 @@
         let sessionStartTime = null;
         let sessionTimer = null;
         let logoutWarningShown = false;
+        // 🛡️ 조작 감지용 변수들
+        let previousRemainingTime = null;
+        let lastUpdateTime = null;
         let apiKeys = [];
         let currentApiKeyIndex = 0; // 현재 사용 중인 API 키 인덱스
         let currentResults = [];
@@ -2415,6 +2438,7 @@
                 if (result.success) {
                     // 관리자 인증 성공
                     userAuthenticated = true;
+                    loginInProgress = true; 
                     showAdminSuccess();
                     
                     // 관리자 세션 저장 (토큰 포함)
@@ -2615,6 +2639,8 @@
                     sessionStorage.setItem('authResult', JSON.stringify(licenseResult));
                     sessionStorage.setItem('authTimestamp', Date.now().toString());
                     sessionStorage.setItem('userType', type);
+                    sessionStorage.setItem('userType', type);
+                    loginInProgress = false; // 로그인 완료, 플래그 해제
                     // 관리자 모드 확실히 해제
                     sessionStorage.removeItem('adminMode');
                     sessionStorage.removeItem('adminId');
@@ -5119,7 +5145,24 @@
             
             const elapsed = Date.now() - sessionStartTime;
             const remaining = Math.max(0, sessionDuration - elapsed);
-            
+
+            // 🛡️ 시간 조작 감지
+            if (previousRemainingTime !== null && lastUpdateTime !== null) {
+                const timeDiff = Date.now() - lastUpdateTime;
+                const expectedDecrease = Math.min(timeDiff, 2000); // 최대 2초 차이 허용
+                
+                // 시간이 역행했거나 비정상적으로 증가한 경우
+                if (remaining > previousRemainingTime + expectedDecrease) {
+                    alert('⚠️ 시간 조작이 감지되었습니다. 자동으로 로그아웃됩니다.');
+                    performLogout();
+                    return;
+                }
+            }
+
+            // 현재 상태 저장
+            previousRemainingTime = remaining;
+            lastUpdateTime = Date.now();
+
             if (remaining <= 0) {
                 alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
                 performLogout();
