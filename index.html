@@ -1786,6 +1786,9 @@
             
             <!-- 사용자 타입 선택 -->
             <div class="user-type-selection" id="userTypeSelection">
+                <!-- 안보이는 관리자 버튼 (좌측 상단) -->
+                <div style="position: absolute; top: 10px; left: 10px; width: 30px; height: 30px; opacity: 0; cursor: pointer; z-index: 9999;" onclick="showAdminLogin()" title="관리자 모드"></div>
+                
                 <div class="auth-info">사용자 타입을 선택해주세요</div>
                 <div class="user-type-buttons" style="display: flex; gap: 15px; margin-bottom: 20px;">
                     <button class="user-type-btn paid" onclick="selectUserType('paid')" style="flex: 1; padding: 15px; border: 3px solid #B91C1C; border-radius: 10px; background: linear-gradient(135deg, #FEF3C7, #FCD34D); color: #1F2937; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(185, 28, 28, 0.3);">
@@ -1832,6 +1835,34 @@
                 </div>
             </div>
 
+            <!-- 관리자 인증 폼 -->
+            <div class="auth-form" id="adminAuthForm" style="display: none;">
+                <div class="auth-info" style="text-align: center; padding: 12px; background: rgba(255, 0, 0, 0.1); border: 1px solid rgba(255, 0, 0, 0.3); border-radius: 8px; margin-bottom: 15px;">
+                    <div style="font-size: 14px; color: rgba(255, 255, 255, 0.9); margin-bottom: 10px;">
+                        🔒 관리자 모드
+                    </div>
+                    <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">
+                        관리자 계정으로 로그인하세요
+                    </div>
+                </div>
+                <div id="adminError" class="error-message" style="display: none; background: rgba(255, 255, 255, 0.9); border: 2px solid #ff4444; color: #cc0000; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; font-weight: 600;"></div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">관리자 ID</label>
+                    <input type="text" id="adminId" placeholder="관리자 아이디를 입력하세요" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 3px; font-size: 14px; font-weight: 600;">관리자 비밀번호</label>
+                    <input type="password" id="adminPassword" placeholder="관리자 비밀번호를 입력하세요" style="width: 100%; padding: 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px;">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn auth-btn" id="adminAuthBtn" style="flex: 1; margin-bottom: 0;">🚀 관리자 로그인</button>
+                    <button class="back-btn" onclick="goBackToSelection()" style="flex: 1; padding: 10px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: transparent; color: white; font-size: 16px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0;">← 뒤로가기</button>
+                </div>
+            </div>
+            
             <!-- 무료 사용자 폼 -->
             <div class="auth-form" id="freeAuthForm" style="display: none;">
                 <div class="auth-info" style="text-align: center; padding: 12px; background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 8px; margin-bottom: 15px;">
@@ -2346,19 +2377,91 @@
             }
         }
 
+        // 관리자 로그인 화면 표시
+        function showAdminLogin() {
+            currentUserType = 'admin';
+            
+            // 선택 화면 숨기기
+            document.getElementById('userTypeSelection').style.display = 'none';
+            
+            // 관리자 폼 표시
+            document.getElementById('adminAuthForm').style.display = 'block';
+        }
+
+        // 관리자 인증 처리
+        async function authenticateAdmin() {
+            const btn = document.getElementById('adminAuthBtn');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '확인중...';
+            hideError('admin');
+            
+            try {
+                const adminId = document.getElementById('adminId').value.trim();
+                const adminPassword = document.getElementById('adminPassword').value.trim();
+                
+                if (!adminId || !adminPassword) {
+                    showError('admin', '아이디와 비밀번호를 모두 입력해주세요.');
+                    return;
+                }
+                
+                // 백엔드에서 관리자 인증 처리
+                const result = await callBackendAPI('adminAuth', {
+                    adminId: adminId,
+                    adminPassword: adminPassword
+                });
+                
+                if (result.success) {
+                    // 관리자 인증 성공
+                    userAuthenticated = true;
+                    showAdminSuccess();
+                    
+                    // 관리자 세션 저장 (무제한)
+                    sessionStorage.setItem('adminMode', 'true');
+                    sessionStorage.setItem('userAuthenticated', 'true');
+                    sessionStorage.setItem('userType', 'admin');
+                    sessionStorage.setItem('adminId', adminId);
+                    sessionStorage.setItem('adminLoginTime', Date.now().toString());
+                    
+                    console.log('✅ 관리자 로그인 성공:', result.data);
+                    
+                } else {
+                    throw new Error(result.message || '관리자 인증에 실패했습니다.');
+                }
+                
+            } catch (error) {
+                console.error('관리자 인증 오류:', error);
+                showError('admin', error.message || '인증 처리 중 오류가 발생했습니다.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // 관리자 인증 성공 화면
+        function showAdminSuccess() {
+            document.getElementById('adminAuthForm').style.display = 'none';
+            document.getElementById('successForm').style.display = 'block';
+            document.getElementById('successMessage').innerHTML = '🔒 관리자님, 인증이 완료되었습니다!<br><small style="color: rgba(255,255,255,0.8);">무제한 사용 모드</small>';
+        }
+        
         // 뒤로가기
         function goBackToSelection() {
             document.getElementById('userTypeSelection').style.display = 'block';
             document.getElementById('paidAuthForm').style.display = 'none';
             document.getElementById('freeAuthForm').style.display = 'none';
+            document.getElementById('adminAuthForm').style.display = 'none';
             
             // 에러 메시지 숨기기
             hideError('paid');
             hideError('free');
+            hideError('admin');
             
             // 입력값 초기화
             clearForm('paid');
             clearForm('free');
+            clearForm('admin');
             
             currentUserType = null;
         }
@@ -2402,6 +2505,9 @@
                 document.getElementById('freeName').value = '';
                 document.getElementById('freeEmail').value = '';
                 document.getElementById('freeLicense').value = '';
+            } else if (type === 'admin') {
+                document.getElementById('adminId').value = '';
+                document.getElementById('adminPassword').value = '';
             }
         }
 
@@ -2540,6 +2646,7 @@
         // 인증 버튼 이벤트 리스너
         document.getElementById('paidAuthBtn').addEventListener('click', () => authenticate('paid'));
         document.getElementById('freeAuthBtn').addEventListener('click', () => authenticate('free'));
+        document.getElementById('adminAuthBtn').addEventListener('click', () => authenticateAdmin());
 
         
 
@@ -2550,6 +2657,8 @@
                     authenticate('paid');
                 } else if (currentUserType === 'free') {
                     authenticate('free');
+                } else if (currentUserType === 'admin') {
+                    authenticateAdmin();
                 }
             }
         });
@@ -2583,50 +2692,79 @@
             // API 키 초기화 먼저 수행
             initializeApiKeys();
             
-            // 저장된 세션 확인
-            const savedSessionStart = sessionStorage.getItem('sessionStartTime');
+            // 관리자 모드 확인
+            const isAdminMode = sessionStorage.getItem('adminMode') === 'true';
             const savedAuthStatus = sessionStorage.getItem('userAuthenticated');
             
-            if (savedSessionStart && savedAuthStatus === 'true') {
-                const savedStartTime = parseInt(savedSessionStart);
-                const currentTime = Date.now();
-                const elapsed = currentTime - savedStartTime;
+            if (isAdminMode && savedAuthStatus === 'true') {
+                // 관리자 세션 복원
+                userAuthenticated = true;
                 
-                // 세션이 아직 유효한지 확인
-                if (elapsed < sessionDuration) {
-                    // 세션 복원
-                    sessionStartTime = savedStartTime;
-                    userAuthenticated = true;
-                    
-                    // 인증 모달 숨기기
-                    const authModal = document.getElementById('authModal');
-                    if (authModal) {
-                        authModal.style.display = 'none';
-                    }
-                    
-                    // 로그아웃 섹션 표시
-                    const logoutSection = document.getElementById('logoutSection');
-                    if (logoutSection) {
-                        logoutSection.style.display = 'flex';
-                    }
-                    
-                    // 세션 타이머 시작
-                    if (sessionTimer) {
-                        clearInterval(sessionTimer);
-                    }
-                    sessionTimer = setInterval(updateSessionTimer, 1000);
-                    updateSessionTimer();
-                    
-                    updateStatus('세션 복원됨 - YouTube Lens 사용 준비됨');
-                } else {
-                    // 세션 만료됨
-                    localStorage.removeItem('sessionStartTime');
-                    localStorage.removeItem('userAuthenticated');
-                    updateStatus('세션이 만료되었습니다. 다시 인증해 주세요.');
+                // 인증 모달 숨기기
+                const authModal = document.getElementById('authModal');
+                if (authModal) {
+                    authModal.style.display = 'none';
                 }
+                
+                // 로그아웃 섹션 표시 (관리자용)
+                const logoutSection = document.getElementById('logoutSection');
+                if (logoutSection) {
+                    logoutSection.style.display = 'flex';
+                    // 타이머 영역 숨기기
+                    const sessionTimer = document.getElementById('sessionTimer');
+                    if (sessionTimer) {
+                        sessionTimer.style.display = 'none';
+                    }
+                }
+                
+                const adminId = sessionStorage.getItem('adminId') || '관리자';
+                updateStatus(`관리자 모드 복원 - ${adminId}님 무제한 사용`);
+                
             } else {
-                // 저장된 세션 없음
-                updateStatus('준비 완료 - 인증키를 입력하세요');
+                // 일반 사용자 세션 확인
+                const savedSessionStart = sessionStorage.getItem('sessionStartTime');
+                
+                if (savedSessionStart && savedAuthStatus === 'true') {
+                    const savedStartTime = parseInt(savedSessionStart);
+                    const currentTime = Date.now();
+                    const elapsed = currentTime - savedStartTime;
+                    
+                    // 세션이 아직 유효한지 확인
+                    if (elapsed < sessionDuration) {
+                        // 세션 복원
+                        sessionStartTime = savedStartTime;
+                        userAuthenticated = true;
+                        
+                        // 인증 모달 숨기기
+                        const authModal = document.getElementById('authModal');
+                        if (authModal) {
+                            authModal.style.display = 'none';
+                        }
+                        
+                        // 로그아웃 섹션 표시
+                        const logoutSection = document.getElementById('logoutSection');
+                        if (logoutSection) {
+                            logoutSection.style.display = 'flex';
+                        }
+                        
+                        // 세션 타이머 시작
+                        if (sessionTimer) {
+                            clearInterval(sessionTimer);
+                        }
+                        sessionTimer = setInterval(updateSessionTimer, 1000);
+                        updateSessionTimer();
+                        
+                        updateStatus('세션 복원됨 - YouTube Lens 사용 준비됨');
+                    } else {
+                        // 세션 만료됨
+                        sessionStorage.removeItem('sessionStartTime');
+                        sessionStorage.removeItem('userAuthenticated');
+                        updateStatus('세션이 만료되었습니다. 다시 인증해 주세요.');
+                    }
+                } else {
+                    // 저장된 세션 없음
+                    updateStatus('준비 완료 - 인증키를 입력하세요');
+                }
             }
         }
 
@@ -4884,28 +5022,49 @@
         function continueToApp() {
             const authModal = document.getElementById('authModal');
             authModal.style.display = 'none';
-            document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
             
-            // 세션 시작
-            sessionStartTime = Date.now();
-            userAuthenticated = true;
+            // 관리자 모드 확인
+            const isAdminMode = sessionStorage.getItem('adminMode') === 'true';
             
-            // 세션 정보를 sessionStorage에 저장
-            sessionStorage.setItem('sessionStartTime', sessionStartTime.toString());
-            sessionStorage.setItem('userAuthenticated', 'true');
-            
-            // 로그아웃 섹션 표시
-            const logoutSection = document.getElementById('logoutSection');
-            if (logoutSection) {
-                logoutSection.style.display = 'flex';
+            if (isAdminMode) {
+                document.getElementById('statusBar').textContent = '관리자 모드 - 무제한 사용';
+                // 관리자는 세션 타이머 없음
+                userAuthenticated = true;
+                
+                // 로그아웃 섹션 표시 (관리자용)
+                const logoutSection = document.getElementById('logoutSection');
+                if (logoutSection) {
+                    logoutSection.style.display = 'flex';
+                    // 타이머 영역 숨기기
+                    const sessionTimer = document.getElementById('sessionTimer');
+                    if (sessionTimer) {
+                        sessionTimer.style.display = 'none';
+                    }
+                }
+            } else {
+                document.getElementById('statusBar').textContent = '인증 완료 - YouTube Lens 사용 준비됨';
+                
+                // 일반 사용자 세션 시작
+                sessionStartTime = Date.now();
+                userAuthenticated = true;
+                
+                // 세션 정보를 sessionStorage에 저장
+                sessionStorage.setItem('sessionStartTime', sessionStartTime.toString());
+                sessionStorage.setItem('userAuthenticated', 'true');
+                
+                // 로그아웃 섹션 표시
+                const logoutSection = document.getElementById('logoutSection');
+                if (logoutSection) {
+                    logoutSection.style.display = 'flex';
+                }
+                
+                // 세션 타이머 시작
+                if (sessionTimer) {
+                    clearInterval(sessionTimer);
+                }
+                sessionTimer = setInterval(updateSessionTimer, 1000);
+                updateSessionTimer(); // 즉시 업데이트
             }
-            
-            // 세션 타이머 시작
-            if (sessionTimer) {
-                clearInterval(sessionTimer);
-            }
-            sessionTimer = setInterval(updateSessionTimer, 1000);
-            updateSessionTimer(); // 즉시 업데이트
         }
         
         // 세션 타이머 업데이트
@@ -4984,6 +5143,9 @@
             sessionStorage.removeItem('authResult');
             sessionStorage.removeItem('authTimestamp');
             sessionStorage.removeItem('userType');
+            sessionStorage.removeItem('adminMode');
+            sessionStorage.removeItem('adminId');
+            sessionStorage.removeItem('adminLoginTime');
             
             // 로그아웃 섹션 숨기기
             const logoutSection = document.getElementById('logoutSection');
