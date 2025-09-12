@@ -2614,6 +2614,10 @@
                     sessionStorage.setItem('authResult', JSON.stringify(licenseResult));
                     sessionStorage.setItem('authTimestamp', Date.now().toString());
                     sessionStorage.setItem('userType', type);
+                    // 관리자 모드 확실히 해제
+                    sessionStorage.removeItem('adminMode');
+                    sessionStorage.removeItem('adminId');
+                    sessionStorage.removeItem('adminLoginTime');
                     
                 } else if (!userValid && licenseResult.valid) {
                     // 사용자 정보만 실패
