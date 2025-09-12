@@ -535,11 +535,15 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         const likeCount = parseInt(video.statistics?.likeCount || 0);
         const commentCount = parseInt(video.statistics?.commentCount || 0);
 
-        // CII 점수 계산
+        // CII 점수 계산 - 정확한 방식
         const channelTotalViewCount = parseInt(channel?.statistics?.viewCount || 0);
         const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
+        const contributionScore = Math.min(contributionValue, 100);
+        
         const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
-        const ciiScore = (contributionValue * 0.7) + (performanceValue * 30);
+        const performanceScore = Math.min(performanceValue * 10, 100);
+        
+        const ciiScore = (contributionScore * 0.3) + (performanceScore * 0.7);
 
         let cii = 'Bad';
         if (ciiScore >= 70) cii = 'Great!!';
@@ -702,11 +706,15 @@ async function fetchSingleVideoData(videoId, apiKeys, startApiKeyIndex = 0) {
         const likeCount = parseInt(video.statistics?.likeCount || 0);
         const commentCount = parseInt(video.statistics?.commentCount || 0);
         
-        // CII 점수 계산
+        // CII 점수 계산 - 정확한 방식
         const channelTotalViewCount = parseInt(channel.statistics?.viewCount || 0);
         const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
+        const contributionScore = Math.min(contributionValue, 100);
+        
         const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
-        const ciiScore = (contributionValue * 0.7) + (performanceValue * 30);
+        const performanceScore = Math.min(performanceValue * 10, 100);
+        
+        const ciiScore = (contributionScore * 0.3) + (performanceScore * 0.7);
         
         let cii = 'Bad';
         if (ciiScore >= 70) cii = 'Great!!';
@@ -1250,11 +1258,15 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
                 const likeCount = parseInt(videoInfo.statistics?.likeCount || 0);
                 const commentCount = parseInt(videoInfo.statistics?.commentCount || 0);
 
-                // CII 점수 계산
+                // CII 점수 계산 - 정확한 방식
                 const channelTotalViewCount = parseInt(channelInfo.statistics?.viewCount || 0);
                 const contributionValue = channelTotalViewCount > 0 ? (viewCount / channelTotalViewCount) * 100 : 0;
+                const contributionScore = Math.min(contributionValue, 100);
+                
                 const performanceValue = subscriberCount > 0 ? viewCount / subscriberCount : 0;
-                const ciiScore = (contributionValue * 0.7) + (performanceValue * 30);
+                const performanceScore = Math.min(performanceValue * 10, 100);
+                
+                const ciiScore = (contributionScore * 0.3) + (performanceScore * 0.7);
 
                 let cii = 'Bad';
                 if (ciiScore >= 70) cii = 'Great!!';
