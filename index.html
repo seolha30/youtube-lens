@@ -3120,7 +3120,7 @@
             const channelsHtml = sortedChannels.map((channel, index) => {
                 const exactText = channel.isExactMatch ? ' (정확일치)' : '';
                 return `
-                    <div class="channel-item" data-channel-id="${channel.id}" data-channel-title="${channel.title.replace(/'/g, "&apos;")}" data-upload-playlist="${channel.uploadPlaylist}" data-video-count="${channel.videoCount}" 
+                    <div class="channel-item" onclick="selectChannelForVideoCollection('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})" 
                         style="display: flex; align-items: center; padding: 15px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s;">
                         
                         <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
@@ -3139,17 +3139,8 @@
                             </div>
                         </div>
                         
-                        <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 15px;">
-                            <!-- 비디오 타입 선택 드롭박스 -->
-                            <select class="channel-video-type" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; min-width: 100px;" onclick="event.stopPropagation()">
-                                <option value="all">쇼츠+롱폼</option>
-                                <option value="shorts">쇼츠만</option>
-                                <option value="longform_4_20">롱폼 4~20분</option>
-                                <option value="longform_20_plus">롱폼 20분 이상</option>
-                            </select>
-                            
-                            <!-- 영상수집 버튼 -->
-                            <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-align: center;">
+                        <div style="text-align: center; padding: 0 15px;">
+                            <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">
                                 영상수집
                             </div>
                         </div>
@@ -3174,7 +3165,14 @@
                             ${channelsHtml}
                         </div>
                         
-                        <div style="margin-top: 20px; text-align: center;">
+                        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 15px; padding: 15px;">
+                            <label style="color: #333; font-weight: bold;">영상 타입:</label>
+                            <select id="channelVideoTypeSelect" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; min-width: 150px;">
+                                <option value="all">쇼츠+롱폼</option>
+                                <option value="shorts">쇼츠만</option>
+                                <option value="longform_4_20">롱폼 4~20분</option>
+                                <option value="longform_20_plus">롱폼 20분 이상</option>
+                            </select>
                             <button onclick="closeChannelSelectionModal()" 
                                     style="background: #666; color: white; border: none; border-radius: 5px; padding: 12px 25px; font-weight: bold; cursor: pointer;">
                                 취소
@@ -3186,25 +3184,9 @@
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
-            // 채널 아이템 클릭 이벤트 (드롭박스 제외)
+            // 채널 아이템 호버 효과
             const channelItems = document.querySelectorAll('.channel-item');
             channelItems.forEach(item => {
-                item.addEventListener('click', function(e) {
-                    // 드롭박스 클릭은 무시
-                    if (e.target.classList.contains('channel-video-type')) {
-                        return;
-                    }
-                    
-                    const channelId = this.dataset.channelId;
-                    const channelTitle = this.dataset.channelTitle;
-                    const uploadPlaylist = this.dataset.uploadPlaylist;
-                    const videoCount = this.dataset.videoCount;
-                    const videoType = this.querySelector('.channel-video-type').value;
-                    
-                    selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount, videoType);
-                });
-                
-                // 호버 효과
                 item.addEventListener('mouseenter', function() {
                     this.style.backgroundColor = '#e3f2fd';
                     this.style.borderColor = '#2196F3';
@@ -3222,8 +3204,12 @@
         }
 
         // 채널 선택 후 영상 수집 함수
-        async function selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount, videoType = 'all') {
+        async function selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount) {
             try {
+                // 선택된 비디오 타입 가져오기
+                const videoTypeSelect = document.getElementById('channelVideoTypeSelect');
+                const videoType = videoTypeSelect ? videoTypeSelect.value : 'all';
+                
                 // 모달 닫기
                 closeChannelSelectionModal();
                 
