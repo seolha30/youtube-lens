@@ -3120,7 +3120,7 @@
             const channelsHtml = sortedChannels.map((channel, index) => {
                 const exactText = channel.isExactMatch ? ' (정확일치)' : '';
                 return `
-                    <div class="channel-item" onclick="selectChannelForVideoCollection('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})" 
+                    <div class="channel-item" data-channel-id="${channel.id}" data-channel-title="${channel.title.replace(/"/g, '&quot;')}" data-upload-playlist="${channel.uploadPlaylist}"
                         style="display: flex; align-items: center; padding: 15px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s;">
                         
                         <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
@@ -3140,8 +3140,8 @@
                         </div>
                         
                         <div style="text-align: center; padding: 0 15px;">
-                            <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">
-                                영상수집
+                            <div id="selected-indicator-${index}" style="background: #ddd; color: #666; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                                선택
                             </div>
                         </div>
                     </div>
@@ -3161,15 +3161,35 @@
                             </div>
                         </div>
                         
-                        <div style="max-height: 450px; overflow-y: auto; padding: 0 10px;">
+                        <div style="max-height: 350px; overflow-y: auto; padding: 0 10px; margin-bottom: 20px;" id="channelsList">
                             ${channelsHtml}
                         </div>
                         
-                        <div style="margin-top: 20px; text-align: center;">
-                            <button onclick="closeChannelSelectionModal()" 
-                                    style="background: #666; color: white; border: none; border-radius: 5px; padding: 12px 25px; font-weight: bold; cursor: pointer;">
-                                취소
-                            </button>
+                        <!-- 하단 컨트롤 영역 -->
+                        <div style="background: #f5f5f5; padding: 15px; border-top: 1px solid #ddd;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                <!-- 영상 타입 선택 드롭박스 -->
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="color: #333; font-weight: bold; font-size: 14px;">영상 타입:</label>
+                                    <select id="videoTypeSelector" style="font-size: 14px; padding: 8px; min-height: 24px; min-width: 120px; background-color: white; color: #333; border: 2px solid #4a9eff; border-radius: 5px;">
+                                        <option value="all">쇼츠 + 롱폼</option>
+                                        <option value="shorts">쇼츠</option>
+                                        <option value="longform">롱폼</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- 버튼 영역 -->
+                                <div style="display: flex; gap: 10px;">
+                                    <button id="selectChannelBtn" onclick="selectChannelForVideoCollection()" 
+                                            style="background: #4a9eff; color: white; border: none; border-radius: 5px; padding: 12px 25px; font-weight: bold; cursor: pointer; min-width: 120px;" disabled>
+                                        선택하기
+                                    </button>
+                                    <button onclick="closeChannelSelectionModal()" 
+                                            style="background: #666; color: white; border: none; border-radius: 5px; padding: 12px 25px; font-weight: bold; cursor: pointer; min-width: 100px;">
+                                        취소
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3177,23 +3197,127 @@
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
-            // 채널 아이템 호버 효과
+            // 선택된 채널 정보를 저장할 변수
+            let selectedChannelData = null;
+            
+            // 채널 아이템 클릭 이벤트
             const channelItems = document.querySelectorAll('.channel-item');
-            channelItems.forEach(item => {
-                item.addEventListener('mouseenter', function() {
+            channelItems.forEach((item, index) => {
+                item.addEventListener('click', function() {
+                    // 기존 선택 해제
+                    channelItems.forEach((otherItem, otherIndex) => {
+                        otherItem.style.backgroundColor = '#f8f9fa';
+                        otherItem.style.borderColor = '#ddd';
+                        document.getElementById(`selected-indicator-${otherIndex}`).style.background = '#ddd';
+                        document.getElementById(`selected-indicator-${otherIndex}`).style.color = '#666';
+                        document.getElementById(`selected-indicator-${otherIndex}`).textContent = '선택';
+                    });
+                    
+                    // 현재 아이템 선택
                     this.style.backgroundColor = '#e3f2fd';
                     this.style.borderColor = '#2196F3';
-                    this.style.transform = 'translateY(-2px)';
-                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                    document.getElementById(`selected-indicator-${index}`).style.background = '#4CAF50';
+                    document.getElementById(`selected-indicator-${index}`).style.color = 'white';
+                    document.getElementById(`selected-indicator-${index}`).textContent = '선택됨';
+                    
+                    // 선택된 채널 데이터 저장
+                    selectedChannelData = {
+                        id: this.dataset.channelId,
+                        title: this.dataset.channelTitle,
+                        uploadPlaylist: this.dataset.uploadPlaylist
+                    };
+                    
+                    // 선택하기 버튼 활성화
+                    document.getElementById('selectChannelBtn').disabled = false;
+                });
+                
+                // 호버 효과
+                item.addEventListener('mouseenter', function() {
+                    if (this.style.backgroundColor !== 'rgb(227, 242, 253)') { // 선택된 상태가 아닐 때만
+                        this.style.backgroundColor = '#f0f0f0';
+                        this.style.transform = 'translateY(-2px)';
+                        this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                    }
                 });
                 
                 item.addEventListener('mouseleave', function() {
-                    this.style.backgroundColor = '#f8f9fa';
-                    this.style.borderColor = '#ddd';
-                    this.style.transform = 'translateY(0)';
-                    this.style.boxShadow = 'none';
+                    if (this.style.backgroundColor !== 'rgb(227, 242, 253)') { // 선택된 상태가 아닐 때만
+                        this.style.backgroundColor = '#f8f9fa';
+                        this.style.transform = 'translateY(0)';
+                        this.style.boxShadow = 'none';
+                    }
                 });
             });
+            
+            // 선택하기 버튼 클릭 이벤트를 위해 전역 함수로 설정
+            window.selectChannelForVideoCollection = function() {
+                if (!selectedChannelData) {
+                    alert('채널을 먼저 선택해주세요.');
+                    return;
+                }
+                
+                const videoType = document.getElementById('videoTypeSelector').value;
+                
+                // 선택된 채널과 영상 타입으로 영상 수집 실행
+                collectVideosFromSelectedChannel(selectedChannelData, videoType);
+            };
+        }
+
+        // 선택된 채널에서 영상 수집하기
+        async function collectVideosFromSelectedChannel(channelData, videoType) {
+            try {
+                // 모달 닫기
+                closeChannelSelectionModal();
+                
+                // 로딩 표시
+                showLoading(true);
+                updateStatus(`채널 영상 수집 중... (${channelData.title})`);
+                
+                // 영상 수집 수 가져오기
+                const maxResults = document.getElementById('maxResults').value;
+                
+                console.log('영상 수집 요청:', { 
+                    channelId: channelData.id, 
+                    videoType: videoType, 
+                    maxResults: maxResults 
+                });
+                
+                // 채널 영상 가져오기 (video_type 파라미터 추가)
+                const result = await callBackendAPI('channelVideos', {
+                    channelId: channelData.id,
+                    uploadPlaylist: channelData.uploadPlaylist,
+                    maxResults: parseInt(maxResults),
+                    videoType: videoType,  // 이 부분이 핵심!
+                    apiKeys: apiKeys,
+                    currentApiKeyIndex: currentApiKeyIndex
+                });
+                
+                if (result.data && result.data.length > 0) {
+                    // 결과 표시
+                    originalResults = result.data;
+                    currentResults = [...originalResults];
+                    displayResults(currentResults);
+                    
+                    const typeText = videoType === 'all' ? '쇼츠+롱폼' : 
+                                    videoType === 'shorts' ? '쇼츠' : '롱폼';
+                    updateStatus(`${typeText} 영상 수집 완료 - ${result.data.length}개 영상 (${channelData.title})`);
+
+                    // 필터가 설정되어 있으면 자동 적용
+                    await autoApplyFiltersIfSet();
+                } else {
+                    const typeText = videoType === 'all' ? '쇼츠+롱폼' : 
+                                    videoType === 'shorts' ? '쇼츠' : '롱폼';
+                    alert(`이 채널에서 ${typeText} 영상을 찾을 수 없습니다.`);
+                    showLoading(false);
+                    updateStatus(`${typeText} 영상 없음`);
+                }
+                
+            } catch (error) {
+                console.error('채널 영상 수집 오류:', error);
+                alert('채널 영상을 수집하는 중 오류가 발생했습니다: ' + error.message);
+                updateStatus('채널 영상 수집 실패');
+                showLoading(false);
+            }
         }
 
         // 채널 선택 후 영상 수집 함수
