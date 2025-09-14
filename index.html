@@ -3053,10 +3053,11 @@
                         regionCode: document.getElementById('regionCode').value,
                         startDate: document.getElementById('startDate').value,
                         endDate: document.getElementById('endDate').value,
+                        videoType: document.getElementById('videoType').value,
                         isViewsSort: isViewsSort,
                         isAllVideos: isAllVideos,
                         isVideoSearch: isVideoSearch,
-                        apiKeys: apiKeys
+                        currentApiKeyIndex: currentApiKeyIndex
                     };
                     
                     const result = await callBackendAPI('search', searchParams);
