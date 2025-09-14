@@ -69,6 +69,7 @@ async function handleSearch(req, res) {
         isVideoSearch,
         startDate, 
         endDate,
+        videoType,
         currentApiKeyIndex
     } = data;
     
@@ -92,6 +93,7 @@ async function handleSearch(req, res) {
             isVideoSearch: isVideoSearch === true || isVideoSearch === 'true',
             startDate,
             endDate,
+            videoType: videoType || 'all',
             currentApiKeyIndex: parseInt(currentApiKeyIndex) || 0
         }, apiKeys);
         
@@ -310,7 +312,8 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         isAllVideos, 
         isVideoSearch,
         startDate,
-        endDate 
+        endDate,
+        videoType
     } = searchParams;
     
     let currentApiIndex = 0;
@@ -440,6 +443,17 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
             `maxResults=${currentBatchSize}&` +
             `order=${sortBy}&` +
             `regionCode=${regionCode}`;
+
+        // 비디오 타입별 duration 필터 추가
+        if (isVideoSearch && videoType && videoType !== 'all') {
+            if (videoType === 'shorts') {
+                searchUrl += `&videoDuration=short`;
+            } else if (videoType === 'longform_4_20') {
+                searchUrl += `&videoDuration=medium`;
+            } else if (videoType === 'longform_20_plus') {
+                searchUrl += `&videoDuration=long`;
+            }
+        }
         
         // 해당 국가의 언어 설정 추가
         if (regionCode in languageMapping) {
@@ -566,8 +580,14 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
         }
         const isShorts = totalSeconds <= 60;
 
+        // URL 형식 결정 - 쇼츠면 shorts URL, 아니면 일반 watch URL 사용
+        const videoUrl = (videoType === 'shorts' || isShorts) ? 
+            `https://www.youtube.com/shorts/${video.id}` : 
+            `https://www.youtube.com/watch?v=${video.id}`;
+
         return {
             index: index + 1,
+            videoUrl: videoUrl,
             thumbnail: video.snippet?.thumbnails?.default?.url || '',
             title: video.snippet?.title || '',
             channelTitle: video.snippet?.channelTitle || '',
@@ -620,6 +640,7 @@ async function searchYouTubeVideos(searchParams, apiKeys) {
 
     return results;
 }
+
 
 
 // 단일 비디오 데이터 가져오기 함수 (test.html의 fetchSingleVideoData 완전 포팅)
@@ -737,9 +758,15 @@ async function fetchSingleVideoData(videoId, apiKeys, startApiKeyIndex = 0) {
         }
         const isShorts = totalSeconds <= 60;
         
+        // URL 형식 결정 - 쇼츠면 shorts URL, 아니면 일반 watch URL 사용  
+        const videoUrl = isShorts ? 
+            `https://www.youtube.com/shorts/${video.id}` : 
+            `https://www.youtube.com/watch?v=${video.id}`;
+        
         // 결과 객체 생성
         const result = {
             index: 1,
+            videoUrl: videoUrl,
             thumbnail: video.snippet?.thumbnails?.default?.url || '',
             title: video.snippet?.title || '',
             channelTitle: video.snippet?.channelTitle || '',
@@ -770,6 +797,7 @@ async function fetchSingleVideoData(videoId, apiKeys, startApiKeyIndex = 0) {
         throw error;
     }
 }
+
 
 
 // 필터 적용 함수 (test.html의 applyFilters 완전 포팅)
@@ -1289,8 +1317,14 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
                 }
                 const isShorts = totalSeconds <= 60;
 
+                // URL 형식 결정 - 쇼츠면 shorts URL, 아니면 일반 watch URL 사용
+                const videoUrl = isShorts ? 
+                    `https://www.youtube.com/shorts/${videoId}` : 
+                    `https://www.youtube.com/watch?v=${videoId}`;
+
                 results.push({
                     index: index + 1,
+                    videoUrl: videoUrl,
                     thumbnail: videoInfo.snippet?.thumbnails?.default?.url || '',
                     title: videoInfo.snippet?.title || '',
                     channelTitle: channelInfo.snippet?.title || '',
@@ -1326,7 +1360,7 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
 }
 
 
-// 채널 검색 함수 (test.html의 searchChannelByName 완전 포팅)
+
 // 채널 검색 함수 (test.html의 searchChannelByName 완전 포팅)
 async function searchChannelByName(channelName, regionCode, apiKeys, startApiKeyIndex = 0) {
     let currentApiIndex = startApiKeyIndex;
