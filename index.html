@@ -3120,7 +3120,7 @@
             const channelsHtml = sortedChannels.map((channel, index) => {
                 const exactText = channel.isExactMatch ? ' (정확일치)' : '';
                 return `
-                    <div class="channel-item" onclick="selectChannelForVideoCollection('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})" 
+                    <div class="channel-item" onclick="selectChannelForVideoCollectionFromModal('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})"
                         style="display: flex; align-items: center; padding: 15px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s;">
                         
                         <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
@@ -3260,6 +3260,16 @@
                 updateStatus('채널 영상 수집 실패');
                 showLoading(false);
             }
+        }
+
+        // 모달에서 채널 선택 시 호출되는 함수
+        function selectChannelForVideoCollectionFromModal(channelId, channelTitle, uploadPlaylist, videoCount) {
+            // 선택된 비디오 타입 가져오기
+            const videoTypeSelect = document.getElementById('channelVideoTypeSelect');
+            const videoType = videoTypeSelect ? videoTypeSelect.value : 'all';
+            
+            // 기존 함수 호출
+            selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount, videoType);
         }
 
         // 채널 선택 모달 닫기 함수
