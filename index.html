@@ -1576,15 +1576,26 @@
                     <button class="toggle-btn all-videos" id="licenseToggle" onclick="toggleLicense()">🎬 전체</button>
                 </div>
 
-                <!-- 2. 영상 수집 수 -->
-                <div class="form-group">
-                    <label>영상 수집 수</label>
-                    <select class="form-control" id="maxResults">
-                        <option value="50">50개</option>
-                        <option value="100" selected>100개</option>
-                        <option value="200">200개</option>
-                        <option value="500">500개</option>
-                    </select>
+                <!-- 2. 타입 / 영상 수집 수 (가로 배치) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>타입</label>
+                        <select class="form-control" id="videoType">
+                            <option value="all">쇼츠+롱폼</option>
+                            <option value="shorts">쇼츠</option>
+                            <option value="longform_4_20">롱폼 4~20분</option>
+                            <option value="longform_20_plus">롱폼 20분 이상</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>영상 수집 수</label>
+                        <select class="form-control" id="maxResults">
+                            <option value="50">50개</option>
+                            <option value="100" selected>100개</option>
+                            <option value="200">200개</option>
+                            <option value="500">500개</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- 3. 기간 선택 / 국가 선택 (가로 배치) -->
@@ -1654,13 +1665,7 @@
             <div class="sidebar-section">
                 <div class="section-title">🎚️ 필터 설정</div>
                 
-                <!-- 1. 비디오 타입 필터 (쇼츠/롱폼) -->
-                <div class="form-group">
-                    <div class="filter-buttons-row">
-                        <button class="filter-btn" id="shortsFilter" onclick="toggleFilter('shorts')" type="button">쇼츠</button>
-                        <button class="filter-btn" id="longformFilter" onclick="toggleFilter('longform')" type="button">롱폼</button>
-                    </div>
-                </div>
+                
 
                 <!-- 2. CII 필터 -->
                 <div class="form-group">
