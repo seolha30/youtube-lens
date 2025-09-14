@@ -231,9 +231,9 @@ async function handleChannelInfo(req, res) {
 
 // 채널 영상 수집 처리 함수 (test.html의 fetchChannelVideos 완전 포팅)
 async function handleChannelVideos(req, res) {
-    const { channelId, uploadPlaylist, maxResults, apiKeys, currentApiKeyIndex, videoType } = req.method === 'GET' ? req.query : req.body;
+    const { channelId, uploadPlaylist, maxResults, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
-    console.log('채널 영상 수집 요청:', { channelId, uploadPlaylist, maxResults, videoType });
+    console.log('채널 영상 수집 요청:', { channelId, uploadPlaylist, maxResults });
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -243,7 +243,7 @@ async function handleChannelVideos(req, res) {
     }
     
     try {
-        const result = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults), apiKeys, parseInt(currentApiKeyIndex) || 0, videoType || 'all');
+        const result = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults), apiKeys, parseInt(currentApiKeyIndex) || 0);
         
         res.status(200).json({
             success: true,
@@ -260,7 +260,6 @@ async function handleChannelVideos(req, res) {
         });
     }
 }
-
 
 
 
@@ -1131,7 +1130,7 @@ async function fetchDetailedChannelInfo(channelId, apiKeys, maxResults = 50) {
 
 
 // 채널 영상 수집 함수 (test.html의 fetchChannelVideos 완전 포팅)
-async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys, startApiKeyIndex = 0, videoType = 'all') {
+async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys, startApiKeyIndex = 0) {
     let currentApiIndex = startApiKeyIndex;
     
     console.log('채널 영상 수집 시작:', { channelId, uploadPlaylist, maxResults });
@@ -1351,34 +1350,6 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
             }
         });
         
-        // 비디오 타입별 필터링
-        if (videoType && videoType !== 'all') {
-            results = results.filter(video => {
-                const isShorts = video.isShorts;
-                
-                switch(videoType) {
-                    case 'shorts':
-                        return isShorts;
-                    case 'longform_4_20':
-                        if (isShorts) return false;
-                        // 4~20분 체크
-                        const durationStr = video.duration;
-                        const totalSeconds = parseDurationToSeconds(durationStr);
-                        return totalSeconds >= 240 && totalSeconds <= 1200; // 4분~20분
-                    case 'longform_20_plus':
-                        if (isShorts) return false;
-                        // 20분 이상 체크
-                        const durationStr2 = video.duration;
-                        const totalSeconds2 = parseDurationToSeconds(durationStr2);
-                        return totalSeconds2 > 1200; // 20분 초과
-                    default:
-                        return true;
-                }
-            });
-            
-            console.log(`비디오 타입 필터링 완료 (${videoType}): ${results.length}개 영상`);
-        }
-
         console.log('채널 영상 수집 완료:', results.length);
         return { data: results, currentApiKeyIndex: currentApiIndex };
         
@@ -1696,24 +1667,4 @@ function extractVideoId(url) {
     }
     
     return null;
-}
-// 영상 길이를 초로 변환하는 헬퍼 함수
-function parseDurationToSeconds(durationStr) {
-    if (!durationStr) return 0;
-    
-    const parts = durationStr.split(':');
-    let seconds = 0;
-    
-    if (parts.length === 3) {
-        // HH:MM:SS
-        seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-    } else if (parts.length === 2) {
-        // MM:SS
-        seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-    } else {
-        // SS
-        seconds = parseInt(parts[0]) || 0;
-    }
-    
-    return seconds;
 }
