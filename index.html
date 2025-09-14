@@ -3120,7 +3120,7 @@
             const channelsHtml = sortedChannels.map((channel, index) => {
                 const exactText = channel.isExactMatch ? ' (정확일치)' : '';
                 return `
-                    <div class="channel-item" onclick="selectChannelForVideoCollection('${channel.id}', '${channel.title.replace(/'/g, "&apos;")}', '${channel.uploadPlaylist}', ${channel.videoCount})" 
+                    <div class="channel-item" data-channel-id="${channel.id}" data-channel-title="${channel.title.replace(/'/g, "&apos;")}" data-upload-playlist="${channel.uploadPlaylist}" data-video-count="${channel.videoCount}" 
                         style="display: flex; align-items: center; padding: 15px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: all 0.2s;">
                         
                         <img src="${channel.thumbnailUrl}" alt="채널 썸네일" 
@@ -3139,8 +3139,17 @@
                             </div>
                         </div>
                         
-                        <div style="text-align: center; padding: 0 15px;">
-                            <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                        <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 15px;">
+                            <!-- 비디오 타입 선택 드롭박스 -->
+                            <select class="channel-video-type" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; min-width: 100px;" onclick="event.stopPropagation()">
+                                <option value="all">쇼츠+롱폼</option>
+                                <option value="shorts">쇼츠만</option>
+                                <option value="longform_4_20">롱폼 4~20분</option>
+                                <option value="longform_20_plus">롱폼 20분 이상</option>
+                            </select>
+                            
+                            <!-- 영상수집 버튼 -->
+                            <div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-align: center;">
                                 영상수집
                             </div>
                         </div>
@@ -3177,9 +3186,25 @@
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
-            // 채널 아이템 호버 효과
+            // 채널 아이템 클릭 이벤트 (드롭박스 제외)
             const channelItems = document.querySelectorAll('.channel-item');
             channelItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    // 드롭박스 클릭은 무시
+                    if (e.target.classList.contains('channel-video-type')) {
+                        return;
+                    }
+                    
+                    const channelId = this.dataset.channelId;
+                    const channelTitle = this.dataset.channelTitle;
+                    const uploadPlaylist = this.dataset.uploadPlaylist;
+                    const videoCount = this.dataset.videoCount;
+                    const videoType = this.querySelector('.channel-video-type').value;
+                    
+                    selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount, videoType);
+                });
+                
+                // 호버 효과
                 item.addEventListener('mouseenter', function() {
                     this.style.backgroundColor = '#e3f2fd';
                     this.style.borderColor = '#2196F3';
@@ -3197,14 +3222,24 @@
         }
 
         // 채널 선택 후 영상 수집 함수
-        async function selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount) {
+        async function selectChannelForVideoCollection(channelId, channelTitle, uploadPlaylist, videoCount, videoType = 'all') {
             try {
                 // 모달 닫기
                 closeChannelSelectionModal();
                 
                 // 로딩 표시
                 showLoading(true);
-                updateStatus(`채널 영상 수집 중... (${channelTitle})`);
+                
+                // 비디오 타입에 따른 상태 메시지
+                let videoTypeText = '';
+                switch(videoType) {
+                    case 'shorts': videoTypeText = ' (쇼츠만)'; break;
+                    case 'longform_4_20': videoTypeText = ' (롱폼 4~20분)'; break;
+                    case 'longform_20_plus': videoTypeText = ' (롱폼 20분 이상)'; break;
+                    default: videoTypeText = ' (전체)'; break;
+                }
+                
+                updateStatus(`채널 영상 수집 중... (${channelTitle}${videoTypeText})`);
                 
                 // 영상 수집 수 가져오기
                 const maxResults = document.getElementById('maxResults').value;
@@ -3214,6 +3249,7 @@
                     channelId: channelId,
                     uploadPlaylist: uploadPlaylist,
                     maxResults: parseInt(maxResults),
+                    videoType: videoType,
                     apiKeys: apiKeys
                 });
                 
@@ -3222,14 +3258,14 @@
                     originalResults = result.data;
                     currentResults = [...originalResults];
                     displayResults(currentResults);
-                    updateStatus(`채널 영상 수집 완료 - ${result.data.length}개 영상 (${channelTitle})`);
+                    updateStatus(`채널 영상 수집 완료 - ${result.data.length}개 영상 (${channelTitle}${videoTypeText})`);
 
                     // 필터가 설정되어 있으면 자동 적용
                     await autoApplyFiltersIfSet();
                 } else {
-                    alert('이 채널에서 영상을 찾을 수 없습니다.');
+                    alert(`이 채널에서 ${videoTypeText.replace(' (', '').replace(')', '')} 영상을 찾을 수 없습니다.`);
                     showLoading(false);
-                    updateStatus('채널 영상 없음');
+                    updateStatus(`채널 영상 없음${videoTypeText}`);
                 }
                 
             } catch (error) {
@@ -3867,7 +3903,7 @@
             }
         }
         
-        // 상세 채널 모달에서 채널 영상 수집
+        // 상세한 채널 모달에서 채널 영상 수집
         async function collectChannelVideosFromModal(channelId, channelTitle, uploadPlaylist) {
             try {
                 // 모달 닫기
@@ -3880,26 +3916,29 @@
                 // 영상 수집 수 가져오기
                 const maxResults = document.getElementById('maxResults').value;
                 
+                // 현재 설정된 비디오 타입 가져오기
+                const videoType = document.getElementById('videoType').value;
+                
                 // 채널 영상 가져오기
                 const result = await callBackendAPI('channelVideos', {
                     channelId: channelId,
                     uploadPlaylist: uploadPlaylist,
                     maxResults: parseInt(maxResults),
+                    videoType: videoType,
                     apiKeys: apiKeys
                 });
-                const channelVideos = result.data;
                 
-                if (channelVideos.length === 0) {
+                if (result.data && result.data.length > 0) {
+                    // 결과 표시
+                    originalResults = result.data;
+                    currentResults = [...originalResults];
+                    displayResults(currentResults);
+                    document.getElementById('statusBar').textContent = `채널 영상 수집 완료 - ${result.data.length}개 영상`;
+                } else {
                     alert('이 채널에서 영상을 찾을 수 없습니다.');
                     showLoading(false);
-                    return;
+                    document.getElementById('statusBar').textContent = '채널 영상 없음';
                 }
-                
-                // 결과 표시
-                originalResults = channelVideos;
-                currentResults = [...originalResults];
-                displayResults(currentResults);
-                document.getElementById('statusBar').textContent = `채널 영상 수집 완료 - ${channelVideos.length}개 영상`;
                 
             } catch (error) {
                 console.error('채널 영상 수집 오류:', error);
@@ -3908,7 +3947,7 @@
                 showLoading(false);
             }
         }
-        
+
         // 상세 채널 모달 닫기
         function closeDetailedChannelModal() {
             const modal = document.getElementById('detailedChannelModal');
