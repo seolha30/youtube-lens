@@ -3372,7 +3372,7 @@
             }
         }
 
-        // URL 분석 함수
+        // URL 분석 함수 (누적 방식으로 수정)
         async function analyzeYouTubeUrl() {
             if (!requireAuth('URL 분석')) return;
             
@@ -3397,11 +3397,32 @@
                     apiKeys: apiKeys
                 });
                 
-                originalResults = result.data;
-                currentResults = [...originalResults];
+                // 🔥 핵심 수정: 기존 결과에 새 결과 추가 (누적 방식)
+                if (originalResults.length === 0) {
+                    // 첫 번째 URL인 경우
+                    originalResults = result.data;
+                } else {
+                    // 기존 결과가 있는 경우 - 새 결과를 맨 아래 추가
+                    const newResults = result.data.map(item => ({
+                        ...item,
+                        index: originalResults.length + item.index  // 인덱스 조정
+                    }));
+                    originalResults = originalResults.concat(newResults);
+                }
                 
+                // 전체 인덱스 재조정
+                originalResults = originalResults.map((item, index) => ({
+                    ...item,
+                    index: index + 1
+                }));
+                
+                currentResults = [...originalResults];
                 displayResults(currentResults);
-                updateStatus('URL 분석 완료');
+                
+                // URL 입력창 초기화 (다음 URL 입력 준비)
+                document.getElementById('youtubeUrl').value = '';
+                
+                updateStatus(`URL 분석 완료 - 총 ${originalResults.length}개 영상 (새로 추가: ${result.data.length}개)`);
 
                 // 필터가 설정되어 있으면 자동 적용
                 await autoApplyFiltersIfSet();
