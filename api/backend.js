@@ -231,9 +231,9 @@ async function handleChannelInfo(req, res) {
 
 // 채널 영상 수집 처리 함수 (test.html의 fetchChannelVideos 완전 포팅)
 async function handleChannelVideos(req, res) {
-    const { channelId, uploadPlaylist, maxResults, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
+    const { channelId, uploadPlaylist, maxResults, videoType, apiKeys, currentApiKeyIndex } = req.method === 'GET' ? req.query : req.body;
     
-    console.log('채널 영상 수집 요청:', { channelId, uploadPlaylist, maxResults });
+    console.log('채널 영상 수집 요청:', { channelId, uploadPlaylist, maxResults, videoType });
     
     if (!apiKeys || apiKeys.length === 0) {
         return res.status(400).json({
@@ -243,7 +243,14 @@ async function handleChannelVideos(req, res) {
     }
     
     try {
-        const result = await fetchChannelVideos(channelId, uploadPlaylist, parseInt(maxResults), apiKeys, parseInt(currentApiKeyIndex) || 0);
+        const result = await fetchChannelVideos(
+            channelId, 
+            uploadPlaylist, 
+            parseInt(maxResults), 
+            videoType || 'all',  // 영상 타입 추가 (기본값: all)
+            apiKeys, 
+            parseInt(currentApiKeyIndex) || 0
+        );
         
         res.status(200).json({
             success: true,
@@ -260,6 +267,7 @@ async function handleChannelVideos(req, res) {
         });
     }
 }
+
 
 
 
@@ -1129,11 +1137,11 @@ async function fetchDetailedChannelInfo(channelId, apiKeys, maxResults = 50) {
 }
 
 
-// 채널 영상 수집 함수 (test.html의 fetchChannelVideos 완전 포팅)
-async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys, startApiKeyIndex = 0) {
+// 채널 영상 수집 함수 (튜브렌즈33 방식으로 완전 수정)
+async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, videoType, apiKeys, startApiKeyIndex = 0) {
     let currentApiIndex = startApiKeyIndex;
     
-    console.log('채널 영상 수집 시작:', { channelId, uploadPlaylist, maxResults });
+    console.log('채널 영상 수집 시작:', { channelId, uploadPlaylist, maxResults, videoType });
     
     function getCurrentApiKey() {
         if (!apiKeys || apiKeys.length === 0) return null;
@@ -1207,6 +1215,22 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         
         const channelInfo = channelData.items[0];
         
+        // 🔥 핵심: 영상 타입에 따른 플레이리스트 ID 결정 (튜브렌즈33 방식)
+        let finalPlaylistId = uploadPlaylist;
+        
+        if (videoType === 'shorts') {
+            // 쇼츠 전용: UU를 UUSH로 변경
+            finalPlaylistId = uploadPlaylist.replace('UU', 'UUSH');
+            console.log('쇼츠 전용 플레이리스트:', finalPlaylistId);
+        } else if (videoType === 'longform') {
+            // 롱폼 전용: UU를 UULF로 변경  
+            finalPlaylistId = uploadPlaylist.replace('UU', 'UULF');
+            console.log('롱폼 전용 플레이리스트:', finalPlaylistId);
+        } else {
+            // 쇼츠+롱폼 (all): 기본 플레이리스트 그대로 사용
+            console.log('쇼츠+롱폼 기본 플레이리스트:', finalPlaylistId);
+        }
+        
         // 페이지네이션으로 여러 번 요청하여 원하는 개수만큼 수집
         let allVideos = [];
         let nextPageToken = '';
@@ -1218,35 +1242,49 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
             let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?` +
                 `key=APIKEY_PLACEHOLDER&` +
                 `part=snippet&` +
-                `playlistId=${uploadPlaylist}&` +
+                `playlistId=${finalPlaylistId}&` +
                 `maxResults=${currentBatchSize}`;
             
             if (nextPageToken) {
                 playlistUrl += `&pageToken=${nextPageToken}`;
             }
             
-            console.log(`플레이리스트 영상 목록 API 호출 (${currentBatchSize}개)`);
-            const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
-            const videos = playlistData.items || [];
+            console.log(`플레이리스트 영상 목록 API 호출 (${currentBatchSize}개) - ${videoType}`);
             
-            if (videos.length === 0) {
-                console.log('더 이상 영상이 없음');
-                break;
-            }
-            
-            allVideos = allVideos.concat(videos);
-            remainingResults -= videos.length;
-            
-            // 다음 페이지가 있고 아직 더 수집해야 할 경우
-            if (playlistData.nextPageToken && remainingResults > 0) {
-                nextPageToken = playlistData.nextPageToken;
-            } else {
-                break;
+            try {
+                const { response: playlistResponse, data: playlistData } = await makeApiRequest(playlistUrl);
+                const videos = playlistData.items || [];
+                
+                if (videos.length === 0) {
+                    console.log('더 이상 영상이 없음');
+                    break;
+                }
+                
+                allVideos = allVideos.concat(videos);
+                remainingResults -= videos.length;
+                
+                // 다음 페이지가 있고 아직 더 수집해야 할 경우
+                if (playlistData.nextPageToken && remainingResults > 0) {
+                    nextPageToken = playlistData.nextPageToken;
+                } else {
+                    break;
+                }
+                
+            } catch (playlistError) {
+                // 🔥 쇼츠나 롱폼 전용 플레이리스트가 없을 때 처리
+                if (videoType === 'shorts' || videoType === 'longform') {
+                    console.log(`${videoType} 전용 플레이리스트가 없습니다:`, playlistError.message);
+                    // 빈 배열 반환 (오류가 아닌 정상적인 상황)
+                    return { data: [], currentApiKeyIndex: currentApiIndex };
+                } else {
+                    // 쇼츠+롱폼인데 기본 플레이리스트도 없으면 진짜 오류
+                    throw playlistError;
+                }
             }
         }
         
         if (allVideos.length === 0) {
-            console.log('플레이리스트에 영상이 없음');
+            console.log(`플레이리스트에 ${videoType} 영상이 없음`);
             return { data: [], currentApiKeyIndex: currentApiIndex };
         }
         
@@ -1350,7 +1388,7 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
             }
         });
         
-        console.log('채널 영상 수집 완료:', results.length);
+        console.log(`채널 영상 수집 완료 (${videoType}):`, results.length);
         return { data: results, currentApiKeyIndex: currentApiIndex };
         
     } catch (error) {
@@ -1358,6 +1396,7 @@ async function fetchChannelVideos(channelId, uploadPlaylist, maxResults, apiKeys
         throw error;
     }
 }
+
 
 
 
