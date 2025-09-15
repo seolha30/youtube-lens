@@ -4561,6 +4561,11 @@
                     return;
                 }
                 
+                // 타임라인 제거 처리
+                if (data.subtitle) {
+                    data.subtitle = removeTimestamps(data.subtitle);
+                }
+
                 // 결과 표시
                 showSubtitleModal(data);
                 statusBar.textContent = '자막 수집 완료';
@@ -4572,6 +4577,15 @@
             }
         }
         
+        // 타임라인 제거 함수
+        function removeTimestamps(subtitle) {
+            return subtitle
+                .replace(/\[[\d:]+\]\s*/g, '')  // [00:00] 형태 제거
+                .replace(/^\s+/gm, '')          // 각 줄 앞 공백 제거
+                .replace(/\n\s*\n/g, '\n')      // 빈 줄 정리
+                .trim();                        // 앞뒤 공백 제거
+        }
+
         // 자막 결과 모달 표시
         function showSubtitleModal(data) {
             // 현재 비디오 ID 저장
