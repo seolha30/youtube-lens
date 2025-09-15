@@ -4203,22 +4203,97 @@
                 return;
             }
             
+            // YouTube API 키 형식 검증
+            if (!isValidYouTubeApiKeyFormat(newKey)) {
+                showApiKeyErrorDialog();
+                return;
+            }
+            
             // 중복 확인
             if (apiKeys.includes(newKey)) {
                 alert('이미 등록된 API 키입니다.');
                 return;
             }
             
-            apiKeys.push(newKey);
-            localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
-            
-            newKeyInput.value = '';
-            updateApiKeysList();
-            
-            
-            alert('API 키가 추가되었습니다.');
+            // 실제 API 검증 (비동기)
+            validateAndAddApiKey(newKey);
         }
 
+        // 새로 추가할 함수들
+        function isValidYouTubeApiKeyFormat(key) {
+            const youtubeApiKeyPattern = /^AIza[A-Za-z0-9_-]{35}$/;
+            return youtubeApiKeyPattern.test(key) && key.length === 39;
+        }
+
+        async function validateAndAddApiKey(apiKey) {
+            const btn = document.querySelector('button[onclick="addApiKey()"]');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '검증중...';
+            updateStatus('API 키 검증 중...');
+            
+            try {
+                const testUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&type=video&maxResults=1&key=${apiKey}`;
+                const response = await fetch(testUrl);
+                
+                if (response.status === 200) {
+                    // 성공
+                    apiKeys.push(apiKey);
+                    localStorage.setItem('youtube_api_keys', JSON.stringify(apiKeys));
+                    document.getElementById('newApiKeyInput').value = '';
+                    updateApiKeysList();
+                    updateStatus('유효한 YouTube API 키가 추가되었습니다.');
+                    alert('YouTube API 키가 성공적으로 추가되었습니다!');
+                } else {
+                    showApiKeyErrorDialog();
+                }
+            } catch (error) {
+                showApiKeyErrorDialog();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function showApiKeyErrorDialog() {
+            const existingDialog = document.getElementById('apiKeyErrorDialog');
+            if (existingDialog) existingDialog.remove();
+            
+            const dialogHtml = `
+                <div class="settings-modal" id="apiKeyErrorDialog" style="display: block;">
+                    <div class="settings-content" style="max-width: 500px; text-align: center; background: #ffebee;">
+                        <button class="close-btn" onclick="closeApiKeyErrorDialog()" style="background: #f44336;">&times;</button>
+                        <h3 style="color: #d32f2f; margin-bottom: 20px;">⚠️ 잘못된 API 키</h3>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <p style="color: #333; margin-bottom: 15px; font-size: 14px; line-height: 1.4;">
+                                입력하신 키는 <strong><font color=red>YouTube API 키</font>가 아닙니다.</strong><br>
+                                올바른 YouTube Data API v3 키를 입력해주세요.<br><br>
+                                [인증키 X / <font color=red><B>유튜브 API키 O</b></font>]<br>
+                            </p>
+                        </div>
+                        
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <button onclick="openApiKeyGenerate()" style="background: #4caf50; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-weight: bold; cursor: pointer;">
+                                🔑 API 키 발급받기
+                            </button>
+                            <button onclick="openApiGuide()" style="background: #f44336; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-weight: bold; cursor: pointer;">
+                                📺 발급 방법 영상
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', dialogHtml);
+        }
+
+        function closeApiKeyErrorDialog() {
+            const dialog = document.getElementById('apiKeyErrorDialog');
+            if (dialog) dialog.remove();
+        }
+        
         function removeApiKey(index) {
             if (confirm('이 API 키를 삭제하시겠습니까?')) {
                 apiKeys.splice(index, 1);
