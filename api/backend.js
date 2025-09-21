@@ -987,6 +987,7 @@ async function deeplTranslate(text, targetLang) {
     }
 }
 
+
 // Google Translate 무료 웹 API 사용 (test.html과 완전 동일)
 async function googleTranslate(text, targetLang) {
     try {
