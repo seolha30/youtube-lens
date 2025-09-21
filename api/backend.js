@@ -1621,15 +1621,25 @@ async function handleTranslateSubtitle(req, res) {
         const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
         const data = await response.json();
         
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-            const result = data[0][0][0];
-            console.log('번역 완료:', result.substring(0, 50) + '...');
+        if (data && data[0] && Array.isArray(data[0])) {
+            let translatedText = '';
+            for (let i = 0; i < data[0].length; i++) {
+                if (data[0][i] && data[0][i][0]) {
+                    translatedText += data[0][i][0];
+                }
+            }
             
-            res.status(200).json({
-                success: true,
-                data: { translatedText: result },
-                message: '번역 완료'
-            });
+            console.log('번역 완료:', translatedText.substring(0, 50) + '...');
+            
+            if (translatedText && translatedText.trim()) {
+                res.status(200).json({
+                    success: true,
+                    data: { translatedText: translatedText.trim() },
+                    message: '번역 완료'
+                });
+            } else {
+                throw new Error('번역 결과가 비어있습니다.');
+            }
         } else {
             throw new Error('번역 결과가 비어있습니다.');
         }
