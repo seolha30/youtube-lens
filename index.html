@@ -4634,7 +4634,7 @@
                         </div>
                         
                         <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                            <button class="btn btn-success" onclick="copySubtitle()" style="flex: 1; min-width: 120px;">📋 자막 복사</button>
+                            <button class="btn btn-success" onclick="copySubtitle()" style="flex: 1; min-width: 120px;">📋 원본 복사</button>
                             <button class="btn" onclick="copyTranslatedSubtitle()" style="background: #4CAF50; color: white; flex: 1; min-width: 120px;">📋 번역본 복사</button>
                             <button class="btn" onclick="downloadSubtitle()" style="background: #FF9800; color: white; flex: 1; min-width: 120px;">💾 TXT 다운로드</button>
                             <button class="btn" onclick="openYouTubeVideo()" style="background: #f44336; color: white; flex: 1; min-width: 120px;">📺 YouTube 열기</button>
@@ -4708,6 +4708,7 @@
             });
         }
 
+        // 번역된 자막 복사 함수  
         function copyTranslatedSubtitle() {
             const textArea = document.getElementById('translatedTextArea');
             if (textArea && textArea.value && textArea.value !== '번역된 자막이 여기에 표시됩니다...') {
@@ -5209,6 +5210,13 @@
         // 비디오 모달 닫기
         function closeVideoModal() {
             const modal = document.getElementById('videoModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        // 자막 모달 닫기
+        function closeSubtitleModal() {
+            const modal = document.getElementById('subtitleModal');
             if (modal) {
                 modal.remove();
             }
