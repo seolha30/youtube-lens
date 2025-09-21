@@ -4720,7 +4720,7 @@
             }
         }
         
-        // 자막 번역 함수
+        
         async function translateSubtitle() {
             const originalText = document.getElementById('subtitleTextArea').value;
             const targetLang = document.getElementById('targetLanguage').value;
@@ -4733,31 +4733,39 @@
             }
             
             translateBtn.disabled = true;
-            translateBtn.textContent = '번역 중...';
-            translatedArea.value = '번역 중입니다...';
+            translateBtn.textContent = '번역중...';
+            translatedArea.value = '번역 중...';
             
             try {
-                const result = await callBackendAPI('translateSubtitle', {
-                    text: originalText,
-                    targetLang: targetLang
-                });
+                // 프론트엔드에서 직접 Google Translate 호출
+                const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(originalText)}`);
+                const data = await response.json();
                 
-                if (result.success) {
-                    translatedArea.value = result.data.translatedText;
-                    updateStatus('자막 번역 완료');
+                if (data && data[0] && Array.isArray(data[0])) {
+                    let translatedText = '';
+                    for (let i = 0; i < data[0].length; i++) {
+                        if (data[0][i] && data[0][i][0]) {
+                            translatedText += data[0][i][0];
+                        }
+                    }
+                    
+                    if (translatedText && translatedText.trim()) {
+                        translatedArea.value = translatedText.trim();
+                        updateStatus('번역 완료');
+                    } else {
+                        throw new Error('번역 결과가 비어있습니다.');
+                    }
                 } else {
-                    throw new Error(result.message);
+                    throw new Error('번역 API 응답 형식이 올바르지 않습니다.');
                 }
             } catch (error) {
                 console.error('번역 오류:', error);
                 translatedArea.value = '번역 실패: ' + error.message;
-                alert('번역 중 오류가 발생했습니다: ' + error.message);
             } finally {
                 translateBtn.disabled = false;
-                translateBtn.textContent = '🌍 번역하기';
+                translateBtn.textContent = '번역';
             }
         }
-
         // 번역된 자막 복사 함수
         function copyTranslatedSubtitle() {
             const textArea = document.getElementById('translatedTextArea');
