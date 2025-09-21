@@ -1602,9 +1602,12 @@ async function handleCheckAdmin(req, res) {
     }
 }
 
-// 자막 번역 처리 함수
 async function handleTranslateSubtitle(req, res) {
+    setCorsHeaders(res);
+    
     const { text, targetLang } = req.method === 'GET' ? req.query : req.body;
+    
+    console.log('번역 요청 받음:', { textLength: text?.length, targetLang });
     
     if (!text || !targetLang) {
         return res.status(400).json({
@@ -1614,23 +1617,25 @@ async function handleTranslateSubtitle(req, res) {
     }
     
     try {
-        // Google Translate 무료 API 사용
-        console.log('번역 시작:', text.substring(0, 50), '언어:', targetLang);
-        console.log('번역 결과:', translatedText?.substring(0, 50));
-        const translatedText = await googleTranslate(text, targetLang);
+        // Google Translate API 직접 호출
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
+        const data = await response.json();
         
-        if (translatedText) {
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+            const result = data[0][0][0];
+            console.log('번역 완료:', result.substring(0, 50) + '...');
+            
             res.status(200).json({
                 success: true,
-                data: { translatedText: translatedText },
+                data: { translatedText: result },
                 message: '번역 완료'
             });
         } else {
-            throw new Error('번역 결과를 받을 수 없습니다.');
+            throw new Error('번역 결과가 비어있습니다.');
         }
         
     } catch (error) {
-        console.error('자막 번역 오류:', error);
+        console.error('번역 오류:', error);
         res.status(500).json({
             success: false,
             message: '번역 중 오류가 발생했습니다: ' + error.message
