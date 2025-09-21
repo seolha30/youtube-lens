@@ -1614,6 +1614,8 @@ async function handleTranslateSubtitle(req, res) {
     
     try {
         // Google Translate 무료 API 사용
+        console.log('번역 시작:', text.substring(0, 50), '언어:', targetLang);
+        console.log('번역 결과:', translatedText?.substring(0, 50));
         const translatedText = await googleTranslate(text, targetLang);
         
         if (translatedText) {
