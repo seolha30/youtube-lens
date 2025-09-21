@@ -4676,14 +4676,49 @@
             }
         }
         
-        // 자막 모달 닫기
-        function closeSubtitleModal() {
-            const modal = document.getElementById('subtitleModal');
-            if (modal) {
-                modal.remove();
+        function translateSubtitle() {
+            const originalText = document.getElementById('subtitleTextArea').value;
+            const targetLang = document.getElementById('targetLanguage').value;
+            const translateBtn = document.getElementById('translateBtn');
+            const translatedArea = document.getElementById('translatedTextArea');
+            
+            if (!originalText || originalText === '자막이 없습니다.') {
+                alert('번역할 자막이 없습니다.');
+                return;
             }
+            
+            translateBtn.disabled = true;
+            translateBtn.textContent = '번역중...';
+            translatedArea.value = '번역 중...';
+            
+            callBackendAPI('translateSubtitle', {
+                text: originalText,
+                targetLang: targetLang
+            }).then(result => {
+                if (result.success) {
+                    translatedArea.value = result.data.translatedText;
+                } else {
+                    translatedArea.value = '번역 실패: ' + result.message;
+                }
+            }).catch(error => {
+                translatedArea.value = '번역 실패: ' + error.message;
+            }).finally(() => {
+                translateBtn.disabled = false;
+                translateBtn.textContent = '번역';
+            });
         }
 
+        function copyTranslatedSubtitle() {
+            const textArea = document.getElementById('translatedTextArea');
+            if (textArea && textArea.value && textArea.value !== '번역된 자막이 여기에 표시됩니다...') {
+                textArea.select();
+                document.execCommand('copy');
+                alert('번역된 자막이 클립보드에 복사되었습니다!');
+            } else {
+                alert('복사할 번역된 자막이 없습니다.');
+            }
+        }
+        
         // 자막 번역 함수
         async function translateSubtitle() {
             const originalText = document.getElementById('subtitleTextArea').value;
