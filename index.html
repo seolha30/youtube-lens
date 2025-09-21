@@ -4586,14 +4586,18 @@
                 .trim();                        // 앞뒤 공백 제거
         }
 
+        // 자막 결과 모달 표시
         function showSubtitleModal(data) {
+            // 현재 비디오 ID 저장
             currentVideoId = data.videoId;
             
+            // 기존 모달 제거
             const existingModal = document.getElementById('subtitleModal');
             if (existingModal) {
                 existingModal.remove();
             }
             
+            // 모달 HTML 생성
             const modalHtml = `
                 <div class="settings-modal" id="subtitleModal" style="display: block;">
                     <div class="settings-content" style="max-width: 900px; max-height: 85vh; overflow-y: auto;">
@@ -4605,38 +4609,14 @@
                             <div style="margin-top: 8px; padding: 12px; background: #2a2a2a; border-radius: 6px; color: #fff; font-size: 14px; line-height: 1.4;">${data.videoTitle || data.videoId}</div>
                         </div>
                         
-                        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                            <div style="flex: 1;">
-                                <strong style="color: white; font-size: 16px; margin-bottom: 8px; display: block;">자막 내용:</strong>
-                                <textarea readonly id="subtitleTextArea" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #555; border-radius: 6px; background: #1a1a1a; color: white; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px; resize: none; line-height: 1.4;">${data.subtitle || '자막이 없습니다.'}</textarea>
-                            </div>
-                            
-                            <div style="flex: 1;">
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <strong style="color: white; font-size: 16px;">구글 번역:</strong>
-                                    <select id="targetLanguage" style="padding: 4px; border-radius: 3px; background: #2a2a2a; color: white; border: 1px solid #555; font-size: 11px;">
-                                        <option value="en">영어</option>
-                                        <option value="ja">일본어</option>
-                                        <option value="zh">중국어</option>
-                                        <option value="es">스페인어</option>
-                                        <option value="fr">프랑스어</option>
-                                        <option value="de">독일어</option>
-                                        <option value="ru">러시아어</option>
-                                        <option value="pt">포르투갈어</option>
-                                        <option value="it">이탈리아어</option>
-                                        <option value="th">태국어</option>
-                                        <option value="vi">베트남어</option>
-                                    </select>
-                                    <button id="translateBtn" onclick="translateSubtitle()" style="background: #4CAF50; color: white; border: none; border-radius: 3px; padding: 4px 8px; font-weight: bold; cursor: pointer; font-size: 11px;">번역</button>
-                                </div>
-                                <textarea readonly id="translatedTextArea" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #555; border-radius: 6px; background: #1a1a1a; color: white; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px; resize: none; line-height: 1.4;" placeholder="번역된 자막이 여기에 표시됩니다..."></textarea>
-                            </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong style="color: white; font-size: 16px; margin-bottom: 8px; display: block;">자막 내용:</strong>
+                            <textarea readonly id="subtitleTextArea" style="width: 100%; height: 400px; padding: 12px; border: 1px solid #555; border-radius: 6px; background: #1a1a1a; color: white; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px; resize: vertical; line-height: 1.4;">${data.subtitle || '자막이 없습니다.'}</textarea>
                         </div>
                         
                         <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                            <button class="btn btn-success" onclick="copySubtitle()" style="flex: 1; min-width: 120px;">📋 원본 복사</button>
-                            <button class="btn" onclick="copyTranslatedSubtitle()" style="background: #4CAF50; color: white; flex: 1; min-width: 120px;">📋 번역본 복사</button>
-                            <button class="btn" onclick="downloadSubtitle()" style="background: #FF9800; color: white; flex: 1; min-width: 120px;">💾 TXT 다운로드</button>
+                            <button class="btn btn-success" onclick="copySubtitle()" style="flex: 1; min-width: 120px;">📋 자막 복사</button>
+                            <button class="btn" onclick="downloadSubtitle()" style="background: #FF9800; color: white; flex: 1; min-width: 120px;">📥 TXT 다운로드</button>
                             <button class="btn" onclick="openYouTubeVideo()" style="background: #f44336; color: white; flex: 1; min-width: 120px;">📺 YouTube 열기</button>
                             <button class="btn" onclick="closeSubtitleModal()" style="background: #666; color: white; flex: 1; min-width: 100px;">✖ 닫기</button>
                         </div>
@@ -4646,7 +4626,7 @@
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
-
+        
         // 자막 복사
         function copySubtitle() {
             const textArea = document.getElementById('subtitleTextArea');
@@ -4676,105 +4656,11 @@
             }
         }
         
-        function translateSubtitle() {
-            const originalText = document.getElementById('subtitleTextArea').value;
-            const targetLang = document.getElementById('targetLanguage').value;
-            const translateBtn = document.getElementById('translateBtn');
-            const translatedArea = document.getElementById('translatedTextArea');
-            
-            if (!originalText || originalText === '자막이 없습니다.') {
-                alert('번역할 자막이 없습니다.');
-                return;
-            }
-            
-            translateBtn.disabled = true;
-            translateBtn.textContent = '번역중...';
-            translatedArea.value = '번역 중...';
-            
-            callBackendAPI('translateSubtitle', {
-                text: originalText,
-                targetLang: targetLang
-            }).then(result => {
-                if (result.success) {
-                    translatedArea.value = result.data.translatedText;
-                } else {
-                    translatedArea.value = '번역 실패: ' + result.message;
-                }
-            }).catch(error => {
-                translatedArea.value = '번역 실패: ' + error.message;
-            }).finally(() => {
-                translateBtn.disabled = false;
-                translateBtn.textContent = '번역';
-            });
-        }
-
-        // 번역된 자막 복사 함수  
-        function copyTranslatedSubtitle() {
-            const textArea = document.getElementById('translatedTextArea');
-            if (textArea && textArea.value && textArea.value !== '번역된 자막이 여기에 표시됩니다...') {
-                textArea.select();
-                document.execCommand('copy');
-                alert('번역된 자막이 클립보드에 복사되었습니다!');
-            } else {
-                alert('복사할 번역된 자막이 없습니다.');
-            }
-        }
-        
-        
-        async function translateSubtitle() {
-            const originalText = document.getElementById('subtitleTextArea').value;
-            const targetLang = document.getElementById('targetLanguage').value;
-            const translateBtn = document.getElementById('translateBtn');
-            const translatedArea = document.getElementById('translatedTextArea');
-            
-            if (!originalText || originalText === '자막이 없습니다.') {
-                alert('번역할 자막이 없습니다.');
-                return;
-            }
-            
-            translateBtn.disabled = true;
-            translateBtn.textContent = '번역중...';
-            translatedArea.value = '번역 중...';
-            
-            try {
-                // 프론트엔드에서 직접 Google Translate 호출
-                const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(originalText)}`);
-                const data = await response.json();
-                
-                if (data && data[0] && Array.isArray(data[0])) {
-                    let translatedText = '';
-                    for (let i = 0; i < data[0].length; i++) {
-                        if (data[0][i] && data[0][i][0]) {
-                            translatedText += data[0][i][0];
-                        }
-                    }
-                    
-                    if (translatedText && translatedText.trim()) {
-                        translatedArea.value = translatedText.trim();
-                        updateStatus('번역 완료');
-                    } else {
-                        throw new Error('번역 결과가 비어있습니다.');
-                    }
-                } else {
-                    throw new Error('번역 API 응답 형식이 올바르지 않습니다.');
-                }
-            } catch (error) {
-                console.error('번역 오류:', error);
-                translatedArea.value = '번역 실패: ' + error.message;
-            } finally {
-                translateBtn.disabled = false;
-                translateBtn.textContent = '번역';
-            }
-        }
-        // 번역된 자막 복사 함수
-        function copyTranslatedSubtitle() {
-            const textArea = document.getElementById('translatedTextArea');
-            if (textArea && textArea.value && textArea.value !== '번역된 자막이 여기에 표시됩니다...') {
-                textArea.select();
-                document.execCommand('copy');
-                alert('번역된 자막이 클립보드에 복사되었습니다!');
-            } else {
-                alert('복사할 번역된 자막이 없습니다.');
+        // 자막 모달 닫기
+        function closeSubtitleModal() {
+            const modal = document.getElementById('subtitleModal');
+            if (modal) {
+                modal.remove();
             }
         }
 
@@ -5218,13 +5104,6 @@
         // 비디오 모달 닫기
         function closeVideoModal() {
             const modal = document.getElementById('videoModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
-        // 자막 모달 닫기
-        function closeSubtitleModal() {
-            const modal = document.getElementById('subtitleModal');
             if (modal) {
                 modal.remove();
             }
