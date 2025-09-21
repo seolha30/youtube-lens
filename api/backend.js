@@ -38,6 +38,8 @@ export default async function handler(req, res) {
                 return await handleChannelSearch(req, res);
             case 'adminAuth':
                 return await handleAdminAuth(req, res);
+            case 'translateSubtitle':
+                return await handleTranslateSubtitle(req, res);
             case 'checkAdmin':
                 return await handleCheckAdmin(req, res);
             default:
@@ -1595,6 +1597,40 @@ async function handleCheckAdmin(req, res) {
             success: false,
             data: { isAdmin: false },
             message: '서버 오류'
+        });
+    }
+}
+
+// 자막 번역 처리 함수
+async function handleTranslateSubtitle(req, res) {
+    const { text, targetLang } = req.method === 'GET' ? req.query : req.body;
+    
+    if (!text || !targetLang) {
+        return res.status(400).json({
+            success: false,
+            message: '번역할 텍스트와 대상 언어를 입력해주세요.'
+        });
+    }
+    
+    try {
+        // Google Translate 무료 API 사용
+        const translatedText = await googleTranslate(text, targetLang);
+        
+        if (translatedText) {
+            res.status(200).json({
+                success: true,
+                data: { translatedText: translatedText },
+                message: '번역 완료'
+            });
+        } else {
+            throw new Error('번역 결과를 받을 수 없습니다.');
+        }
+        
+    } catch (error) {
+        console.error('자막 번역 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '번역 중 오류가 발생했습니다: ' + error.message
         });
     }
 }
