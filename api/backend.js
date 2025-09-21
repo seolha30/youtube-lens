@@ -986,15 +986,20 @@ async function deeplTranslate(text, targetLang) {
     }
 }
 
-
-// Google Translate 무료 웹 API 사용 (test.html과 완전 동일)
 async function googleTranslate(text, targetLang) {
     try {
-        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
-        const data = await response.json();
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const response = await fetch(url);
+        const result = await response.json();
         
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-            return data[0][0][0];
+        if (result && result[0] && Array.isArray(result[0])) {
+            let finalText = '';
+            for (let i = 0; i < result[0].length; i++) {
+                if (result[0][i] && result[0][i][0]) {
+                    finalText += result[0][i][0];
+                }
+            }
+            return finalText || null;
         }
         return null;
     } catch (error) {
