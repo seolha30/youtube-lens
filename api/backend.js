@@ -38,8 +38,6 @@ export default async function handler(req, res) {
                 return await handleChannelSearch(req, res);
             case 'adminAuth':
                 return await handleAdminAuth(req, res);
-            case 'translateSubtitle':
-                return await handleTranslateSubtitle(req, res);
             case 'checkAdmin':
                 return await handleCheckAdmin(req, res);
             default:
@@ -898,39 +896,40 @@ function applyFilters(results, filters) {
 }
 
 // 번역 기능 (test.html의 translateSearchTerm + deeplTranslate + googleTranslate 완전 포팅)
-async function translateSubtitle() {
-    const originalText = document.getElementById('subtitleTextArea').value;
-    const targetLang = document.getElementById('targetLanguage').value;
-    const translateBtn = document.getElementById('translateBtn');
-    const translatedArea = document.getElementById('translatedTextArea');
-    
-    if (!originalText || originalText === '자막이 없습니다.') {
-        alert('번역할 자막이 없습니다.');
-        return;
-    }
-    
-    translateBtn.disabled = true;
-    translateBtn.textContent = '번역중...';
-    translatedArea.value = '번역 중...';
-    
+async function translateSearchTerm(regionCode, searchTerm) {
     try {
-        const result = await callBackendAPI('translateSubtitle', {
-            text: originalText,
-            targetLang: targetLang
-        });
+        // 국가별 언어 코드 매핑 (test.html과 동일)
+        const languageMapping = {
+            "KR": "ko", "JP": "ja", "US": "en", "TW": "zh-TW", "GB": "en",
+            "CA": "en", "AU": "en", "DE": "de", "FR": "fr", "ES": "es",
+            "BR": "pt", "IN": "hi", "RU": "ru"
+        };
         
-        if (result.success) {
-            translatedArea.value = result.data.translatedText;
-            updateStatus('번역 완료');
-        } else {
-            throw new Error(result.message);
+        const targetLang = languageMapping[regionCode];
+        if (!targetLang || targetLang === 'ko') return null;
+        
+        let translatedText = null;
+        
+        // DeepL API 먼저 시도 (test.html과 동일)
+        try {
+            translatedText = await deeplTranslate(searchTerm, targetLang);
+            console.log(`DeepL 번역 성공: ${searchTerm} → ${translatedText}`);
+        } catch (deeplError) {
+            console.log(`DeepL API 오류 (할당량 초과 가능성): ${deeplError.message}`);
+            // Google Translate로 fallback
+            translatedText = await googleTranslate(searchTerm, targetLang);
         }
+        
+        if (translatedText && translatedText.toLowerCase() !== searchTerm.toLowerCase()) {
+            console.log(`번역 성공: ${searchTerm} → ${translatedText}`);
+            return translatedText;
+        }
+        
+        return null;
+        
     } catch (error) {
         console.error('번역 오류:', error);
-        translatedArea.value = '번역 실패: ' + error.message;
-    } finally {
-        translateBtn.disabled = false;
-        translateBtn.textContent = '번역';
+        return null;
     }
 }
 
@@ -986,20 +985,14 @@ async function deeplTranslate(text, targetLang) {
     }
 }
 
+// Google Translate 무료 웹 API 사용 (test.html과 완전 동일)
 async function googleTranslate(text, targetLang) {
     try {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-        const response = await fetch(url);
-        const result = await response.json();
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
+        const data = await response.json();
         
-        if (result && result[0] && Array.isArray(result[0])) {
-            let finalText = '';
-            for (let i = 0; i < result[0].length; i++) {
-                if (result[0][i] && result[0][i][0]) {
-                    finalText += result[0][i][0];
-                }
-            }
-            return finalText || null;
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+            return data[0][0][0];
         }
         return null;
     } catch (error) {
@@ -1606,46 +1599,6 @@ async function handleCheckAdmin(req, res) {
     }
 }
 
-async function handleTranslateSubtitle(req, res) {
-    setCorsHeaders(res);
-    
-    const { text, targetLang } = req.method === 'GET' ? req.query : req.body;
-    
-    if (!text || !targetLang) {
-        return res.status(400).json({
-            success: false,
-            message: '번역할 텍스트와 대상 언어를 입력해주세요.'
-        });
-    }
-    
-    try {
-        // MyMemory 무료 번역 API 사용 (더 안정적)
-        const response = await fetch(
-            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|${targetLang}`
-        );
-        
-        const data = await response.json();
-        
-        if (data && data.responseData && data.responseData.translatedText) {
-            const translatedText = data.responseData.translatedText;
-            
-            res.status(200).json({
-                success: true,
-                data: { translatedText: translatedText },
-                message: '번역 완료'
-            });
-        } else {
-            throw new Error('번역 API 응답이 올바르지 않습니다.');
-        }
-        
-    } catch (error) {
-        console.error('번역 오류:', error);
-        res.status(500).json({
-            success: false,
-            message: '번역 실패: ' + error.message
-        });
-    }
-}
 // 관리자 인증 처리 함수
 async function handleAdminAuth(req, res) {
     const { adminId, adminPassword } = req.method === 'GET' ? req.query : req.body;
