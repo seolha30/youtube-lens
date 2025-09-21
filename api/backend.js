@@ -1611,8 +1611,6 @@ async function handleTranslateSubtitle(req, res) {
     
     const { text, targetLang } = req.method === 'GET' ? req.query : req.body;
     
-    console.log('번역 요청 받음:', { textLength: text?.length, targetLang });
-    
     if (!text || !targetLang) {
         return res.status(400).json({
             success: false,
@@ -1621,42 +1619,33 @@ async function handleTranslateSubtitle(req, res) {
     }
     
     try {
-        // Google Translate API 직접 호출
-        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`);
+        // MyMemory 무료 번역 API 사용 (더 안정적)
+        const response = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|${targetLang}`
+        );
+        
         const data = await response.json();
         
-        if (data && data[0] && Array.isArray(data[0])) {
-            let translatedText = '';
-            for (let i = 0; i < data[0].length; i++) {
-                if (data[0][i] && data[0][i][0]) {
-                    translatedText += data[0][i][0];
-                }
-            }
+        if (data && data.responseData && data.responseData.translatedText) {
+            const translatedText = data.responseData.translatedText;
             
-            console.log('번역 완료:', translatedText.substring(0, 50) + '...');
-            
-            if (translatedText && translatedText.trim()) {
-                res.status(200).json({
-                    success: true,
-                    data: { translatedText: translatedText.trim() },
-                    message: '번역 완료'
-                });
-            } else {
-                throw new Error('번역 결과가 비어있습니다.');
-            }
+            res.status(200).json({
+                success: true,
+                data: { translatedText: translatedText },
+                message: '번역 완료'
+            });
         } else {
-            throw new Error('번역 결과가 비어있습니다.');
+            throw new Error('번역 API 응답이 올바르지 않습니다.');
         }
         
     } catch (error) {
         console.error('번역 오류:', error);
         res.status(500).json({
             success: false,
-            message: '번역 중 오류가 발생했습니다: ' + error.message
+            message: '번역 실패: ' + error.message
         });
     }
 }
-
 // 관리자 인증 처리 함수
 async function handleAdminAuth(req, res) {
     const { adminId, adminPassword } = req.method === 'GET' ? req.query : req.body;
