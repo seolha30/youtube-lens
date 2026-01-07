@@ -40,8 +40,6 @@ export default async function handler(req, res) {
                 return await handleAdminAuth(req, res);
             case 'checkAdmin':
                 return await handleCheckAdmin(req, res);
-            case 'subtitle':
-                return await handleSubtitle(req, res);
             default:
                 res.status(400).json({ 
                     success: false, 
@@ -1654,41 +1652,6 @@ async function handleAdminAuth(req, res) {
         });
     }
 }
-
-// 자막 수집 처리 함수 (프록시 방식)
-async function handleSubtitle(req, res) {
-    const { videoId } = req.method === 'GET' ? req.query : req.body;
-    
-    console.log('🎤 자막 수집 프록시 요청:', { videoId });
-    
-    if (!videoId) {
-        return res.status(400).json({
-            success: false,
-            error: '비디오 ID가 필요합니다.'
-        });
-    }
-    
-    try {
-        // 외부 API를 백엔드에서 호출 (CORS 우회)
-        const externalApiUrl = `https://youtube-subtitle-api-omega.vercel.app/api/test?videoId=${videoId}`;
-        const response = await fetch(externalApiUrl);
-        const data = await response.json();
-        
-        console.log('✅ 자막 API 응답:', data.success ? '성공' : '실패');
-        
-        // 그대로 전달
-        res.status(200).json(data);
-        
-    } catch (error) {
-        console.error('❌ 자막 수집 오류:', error);
-        res.status(500).json({
-            success: false,
-            error: '자막을 가져올 수 없습니다.',
-            videoId: videoId
-        });
-    }
-}
-
 // 유틸리티 함수들 (test.html과 완전 동일, null 체크 추가)
 function formatDuration(duration) {
     if (!duration) return '0:00';
