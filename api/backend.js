@@ -1,3 +1,4 @@
+import { getSubtitles, getVideoDetails } from 'youtube-caption-extractor';
 // new.js - test.html의 모든 JavaScript 기능을 서버리스 함수로 직접 변환
 // test.html의 JavaScript 코드를 완전히 그대로 포팅하여 누락 없이 구현
 
@@ -1711,12 +1712,10 @@ function extractVideoId(url) {
 }
 
 
-// 자막 수집 처리 함수 (정규식 직접 추출)
+// 자막 수집 처리 함수 (youtube-caption-extractor 사용)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
-    
-    const debug = {};
     
     if (!videoId) {
         return res.status(400).json({
@@ -1739,116 +1738,51 @@ async function handleSubtitle(req, res) {
     }
     
     try {
-        // YouTube 페이지 가져오기
-        const videoUrl = `https://www.youtube.com/watch?v=${cleanVideoId}`;
-        const pageResponse = await fetch(videoUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        // 영상 정보 + 자막 가져오기
+        const videoDetails = await getVideoDetails({ videoID: cleanVideoId, lang: 'ko' });
+        
+        const videoTitle = videoDetails.title || '';
+        const subtitles = videoDetails.subtitles || [];
+        
+        if (!subtitles || subtitles.length === 0) {
+            // 한국어 없으면 영어로 다시 시도
+            const videoDetailsEn = await getVideoDetails({ videoID: cleanVideoId, lang: 'en' });
+            const subtitlesEn = videoDetailsEn.subtitles || [];
+            
+            if (!subtitlesEn || subtitlesEn.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    videoId: cleanVideoId,
+                    videoTitle: videoDetails.title || videoDetailsEn.title || '',
+                    subtitle: '',
+                    message: '이 영상에는 자막이 없습니다.'
+                });
             }
-        });
-        
-        debug.step1_status = pageResponse.status;
-        
-        if (!pageResponse.ok) {
-            return res.status(200).json({ success: false, error: 'YouTube 페이지 요청 실패', debug });
-        }
-        
-        const html = await pageResponse.text();
-        debug.step1_htmlLength = html.length;
-        
-        // 영상 제목 추출
-        const titleMatch = html.match(/"title":"((?:[^"\\]|\\.)*)"/);
-        const videoTitle = titleMatch ? titleMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : '';
-        debug.step2_videoTitle = videoTitle;
-        
-        // captionTracks 찾기
-        const hasCaptionTracks = html.includes('"captionTracks"');
-        debug.step2_hasCaptionTracks = hasCaptionTracks;
-        
-        if (!hasCaptionTracks) {
+            
+            const subtitleText = subtitlesEn.map(s => s.text).join('\n');
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
-                videoTitle: videoTitle,
-                subtitle: '',
-                message: '이 영상에는 자막이 없습니다.',
-                debug
+                videoTitle: videoDetailsEn.title || '',
+                subtitle: subtitleText,
+                language: 'en'
             });
         }
         
-        // baseUrl 추출 (timedtext URL)
-        const baseUrlMatch = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
-        debug.step3_hasBaseUrl = !!baseUrlMatch;
-        
-        if (!baseUrlMatch) {
-            return res.status(200).json({
-                success: true,
-                videoId: cleanVideoId,
-                videoTitle: videoTitle,
-                subtitle: '',
-                message: '자막 URL을 찾을 수 없습니다.',
-                debug
-            });
-        }
-        
-        // URL 디코딩
-        const subtitleUrl = baseUrlMatch[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/');
-        debug.step3_subtitleUrl = subtitleUrl.substring(0, 100) + '...';
-        
-        // 자막 가져오기
-        const subtitleResponse = await fetch(subtitleUrl);
-        debug.step4_status = subtitleResponse.status;
-        
-        if (!subtitleResponse.ok) {
-            return res.status(200).json({ success: false, error: '자막 가져오기 실패', debug });
-        }
-        
-        const subtitleXml = await subtitleResponse.text();
-        debug.step4_xmlLength = subtitleXml.length;
-        debug.step4_xmlSample = subtitleXml.substring(0, 200);
-        
-        // XML에서 텍스트 추출
-        const textMatches = subtitleXml.match(/<text[^>]*>([\s\S]*?)<\/text>/g);
-        debug.step4_matchCount = textMatches ? textMatches.length : 0;
-        
-        if (!textMatches || textMatches.length === 0) {
-            return res.status(200).json({
-                success: true,
-                videoId: cleanVideoId,
-                videoTitle: videoTitle,
-                subtitle: '',
-                message: '자막 내용 비어있음',
-                debug
-            });
-        }
-        
-        const subtitleText = textMatches
-            .map(match => {
-                const text = match.replace(/<text[^>]*>/, '').replace(/<\/text>/, '');
-                return decodeHtmlEntities(text);
-            })
-            .join('\n');
-        
-        // 언어 코드 추출
-        const langMatch = subtitleUrl.match(/lang=([a-z]{2})/);
-        const language = langMatch ? langMatch[1] : 'unknown';
+        const subtitleText = subtitles.map(s => s.text).join('\n');
         
         return res.status(200).json({
             success: true,
             videoId: cleanVideoId,
             videoTitle: videoTitle,
             subtitle: subtitleText,
-            language: language
+            language: 'ko'
         });
         
     } catch (error) {
-        debug.error = error.message;
         return res.status(500).json({
             success: false,
-            error: '자막 수집 오류: ' + error.message,
-            debug
+            error: '자막 수집 오류: ' + error.message
         });
     }
 }
