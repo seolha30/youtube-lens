@@ -1712,6 +1712,7 @@ function extractVideoId(url) {
 
 
 // 자막 수집 처리 함수 (TubeText 무료 API 사용)
+// 자막 수집 처리 함수 (무료 Transcript API 사용)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
@@ -1737,12 +1738,19 @@ async function handleSubtitle(req, res) {
     }
     
     try {
-        // TubeText 무료 API 호출
-        const apiUrl = `https://tubetext.vercel.app/youtube/transcript?video_id=${cleanVideoId}`;
-        const response = await fetch(apiUrl);
+        // 무료 Transcript API 호출 (POST 방식)
+        const apiUrl = 'https://youtube-transcript-api-tau-one.vercel.app/transcript';
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                video_url: `https://www.youtube.com/watch?v=${cleanVideoId}`
+            })
+        });
+        
         const result = await response.json();
         
-        if (!result.success || !result.data) {
+        if (!result.transcript) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
@@ -1752,14 +1760,11 @@ async function handleSubtitle(req, res) {
             });
         }
         
-        const subtitleText = result.data.full_text || result.data.transcript?.join('\n') || '';
-        const videoTitle = result.data.details?.title || '';
-        
         return res.status(200).json({
             success: true,
             videoId: cleanVideoId,
-            videoTitle: videoTitle,
-            subtitle: subtitleText,
+            videoTitle: '',
+            subtitle: result.transcript,
             language: 'auto'
         });
         
