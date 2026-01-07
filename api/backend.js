@@ -1,4 +1,4 @@
-import { getSubtitles, getVideoDetails } from 'youtube-caption-extractor';
+import { getVideoDetails } from 'youtube-caption-extractor';
 // new.js - test.html의 모든 JavaScript 기능을 서버리스 함수로 직접 변환
 // test.html의 JavaScript 코드를 완전히 그대로 포팅하여 누락 없이 구현
 
