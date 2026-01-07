@@ -1710,7 +1710,8 @@ function extractVideoId(url) {
     return null;
 }
 
-// 자막 수집 처리 함수 (HTML 직접 파싱)
+
+// 자막 수집 처리 함수 (정규식 직접 추출)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
@@ -1742,8 +1743,9 @@ async function handleSubtitle(req, res) {
         const videoUrl = `https://www.youtube.com/watch?v=${cleanVideoId}`;
         const pageResponse = await fetch(videoUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             }
         });
         
@@ -1756,52 +1758,16 @@ async function handleSubtitle(req, res) {
         const html = await pageResponse.text();
         debug.step1_htmlLength = html.length;
         
-        // ytInitialPlayerResponse JSON 추출 (중괄호 매칭 방식)
-        const startMarker = 'ytInitialPlayerResponse = ';
-        const startIndex = html.indexOf(startMarker);
-        debug.step2_hasStartMarker = startIndex !== -1;
-        
-        if (startIndex === -1) {
-            return res.status(200).json({ success: false, error: 'Player 정보 없음', debug });
-        }
-        
-        const jsonStart = startIndex + startMarker.length;
-        let depth = 0;
-        let jsonEnd = jsonStart;
-        
-        for (let i = jsonStart; i < html.length; i++) {
-            if (html[i] === '{') depth++;
-            else if (html[i] === '}') {
-                depth--;
-                if (depth === 0) {
-                    jsonEnd = i + 1;
-                    break;
-                }
-            }
-        }
-        
-        const jsonStr = html.substring(jsonStart, jsonEnd);
-        debug.step2_jsonLength = jsonStr.length;
-        
-        let playerData;
-        try {
-            playerData = JSON.parse(jsonStr);
-            debug.step2_parseSuccess = true;
-        } catch (e) {
-            debug.step2_parseSuccess = false;
-            debug.step2_parseError = e.message;
-            return res.status(200).json({ success: false, error: 'JSON 파싱 실패', debug });
-        }
-        
-        const videoTitle = playerData?.videoDetails?.title || '';
+        // 영상 제목 추출
+        const titleMatch = html.match(/"title":"((?:[^"\\]|\\.)*)"/);
+        const videoTitle = titleMatch ? titleMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : '';
         debug.step2_videoTitle = videoTitle;
-        debug.step2_hasVideoDetails = !!playerData?.videoDetails;
-        debug.step2_hasCaptions = !!playerData?.captions;
         
-        const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-        debug.step2_hasCaptionTracks = !!captionTracks;
+        // captionTracks 찾기
+        const hasCaptionTracks = html.includes('"captionTracks"');
+        debug.step2_hasCaptionTracks = hasCaptionTracks;
         
-        if (!captionTracks || captionTracks.length === 0) {
+        if (!hasCaptionTracks) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
@@ -1812,30 +1778,27 @@ async function handleSubtitle(req, res) {
             });
         }
         
-        debug.step2_trackCount = captionTracks.length;
-        debug.step2_languages = captionTracks.map(t => t.languageCode);
+        // baseUrl 추출 (timedtext URL)
+        const baseUrlMatch = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
+        debug.step3_hasBaseUrl = !!baseUrlMatch;
         
-        // 한국어 → 영어 → 첫 번째
-        let selectedTrack = captionTracks.find(t => t.languageCode === 'ko') ||
-                           captionTracks.find(t => t.languageCode === 'en') ||
-                           captionTracks[0];
-        
-        debug.step3_selectedLang = selectedTrack?.languageCode;
-        debug.step3_hasBaseUrl = !!selectedTrack?.baseUrl;
-        
-        if (!selectedTrack || !selectedTrack.baseUrl) {
+        if (!baseUrlMatch) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 URL 없음',
+                message: '자막 URL을 찾을 수 없습니다.',
                 debug
             });
         }
         
+        // URL 디코딩
+        const subtitleUrl = baseUrlMatch[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+        debug.step3_subtitleUrl = subtitleUrl.substring(0, 100) + '...';
+        
         // 자막 가져오기
-        const subtitleResponse = await fetch(selectedTrack.baseUrl);
+        const subtitleResponse = await fetch(subtitleUrl);
         debug.step4_status = subtitleResponse.status;
         
         if (!subtitleResponse.ok) {
@@ -1844,12 +1807,13 @@ async function handleSubtitle(req, res) {
         
         const subtitleXml = await subtitleResponse.text();
         debug.step4_xmlLength = subtitleXml.length;
+        debug.step4_xmlSample = subtitleXml.substring(0, 200);
         
         // XML에서 텍스트 추출
-        const textMatches = subtitleXml.match(/<text[^>]*>([^<]*)<\/text>/g);
+        const textMatches = subtitleXml.match(/<text[^>]*>([\s\S]*?)<\/text>/g);
         debug.step4_matchCount = textMatches ? textMatches.length : 0;
         
-        if (!textMatches) {
+        if (!textMatches || textMatches.length === 0) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
@@ -1867,12 +1831,16 @@ async function handleSubtitle(req, res) {
             })
             .join('\n');
         
+        // 언어 코드 추출
+        const langMatch = subtitleUrl.match(/lang=([a-z]{2})/);
+        const language = langMatch ? langMatch[1] : 'unknown';
+        
         return res.status(200).json({
             success: true,
             videoId: cleanVideoId,
             videoTitle: videoTitle,
             subtitle: subtitleText,
-            language: selectedTrack.languageCode
+            language: language
         });
         
     } catch (error) {
