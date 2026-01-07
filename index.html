@@ -1802,7 +1802,7 @@
                             <th style="width: 70px;" data-sort="commentCount" data-sort-type="number">댓글 수</th>
                             <th style="width: 70px;" data-sort="engagementRate" data-sort-type="number">참여율</th>
                             <th style="width: 70px;" data-sort="totalVideos" data-sort-type="number">총 영상 수</th>
-                            <th style="width: 90px;">자막</th>
+                            <th style="width: 90px; display: none;">자막</th>
                             <th style="width: 150px;">설명</th>
                         </tr>
                     </thead>
@@ -3731,7 +3731,7 @@
                 <td style="cursor: pointer; color: #2196F3; text-decoration: underline;" onclick="showCommentsModal('${item.videoId}', '${item.title.replace(/'/g, "&apos;")}')" ><span title="베스트 댓글 보기">${formatNumber(item.commentCount)}개</span></td>
                 <td>${engagementGauge}</td>
                 <td>${formatNumber(item.totalVideos)}개</td>
-                <td><button class="btn btn-primary" onclick="collectSubtitle('${item.videoId}')" style="padding: 4px 8px; font-size: 11px;">자막수집</button></td>
+                <td style="display: none;"><button class="btn btn-primary" onclick="collectSubtitle('${item.videoId}')" style="padding: 4px 8px; font-size: 11px;">자막수집</button></td>
                 <td title="전체 설명 보기" class="description-cell" onclick="showDescriptionModal('${item.videoId}', '${item.title.replace(/'/g, "&apos;")}')" style="cursor: pointer; color: #2196F3; text-decoration: underline;">${shortDescription}</td>
             `;
             // 저장된 컬럼 설정 적용
