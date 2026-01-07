@@ -1712,7 +1712,7 @@ function extractVideoId(url) {
 }
 
 
-// 자막 수집 처리 함수 (youtube-caption-extractor 사용)
+// 자막 수집 처리 함수 (youtube-caption-extractor 패키지 사용)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
@@ -1738,45 +1738,54 @@ async function handleSubtitle(req, res) {
     }
     
     try {
-        // 영상 정보 + 자막 가져오기
-        const videoDetails = await getVideoDetails({ videoID: cleanVideoId, lang: 'ko' });
+        // youtube-caption-extractor 패키지 사용 (봇 감지 우회 + 서버리스 최적화)
+        // 한국어(ko) 우선 시도, 실패시 영어(en), 그래도 실패시 자동 감지
+        const langPriority = ['ko', 'en', 'auto'];
+        let videoDetails = null;
+        let usedLang = '';
         
-        const videoTitle = videoDetails.title || '';
-        const subtitles = videoDetails.subtitles || [];
-        
-        if (!subtitles || subtitles.length === 0) {
-            // 한국어 없으면 영어로 다시 시도
-            const videoDetailsEn = await getVideoDetails({ videoID: cleanVideoId, lang: 'en' });
-            const subtitlesEn = videoDetailsEn.subtitles || [];
-            
-            if (!subtitlesEn || subtitlesEn.length === 0) {
-                return res.status(200).json({
-                    success: true,
-                    videoId: cleanVideoId,
-                    videoTitle: videoDetails.title || videoDetailsEn.title || '',
-                    subtitle: '',
-                    message: '이 영상에는 자막이 없습니다.'
-                });
+        for (const lang of langPriority) {
+            try {
+                if (lang === 'auto') {
+                    // 언어 지정 없이 시도 (자동 감지)
+                    videoDetails = await getVideoDetails({ videoID: cleanVideoId });
+                } else {
+                    videoDetails = await getVideoDetails({ videoID: cleanVideoId, lang: lang });
+                }
+                
+                // 자막이 있으면 성공
+                if (videoDetails && videoDetails.subtitles && videoDetails.subtitles.length > 0) {
+                    usedLang = lang === 'auto' ? 'auto' : lang;
+                    break;
+                }
+            } catch (langError) {
+                // 해당 언어로 실패하면 다음 언어 시도
+                continue;
             }
-            
-            const subtitleText = subtitlesEn.map(s => s.text).join('\n');
+        }
+        
+        // 모든 언어 시도 후에도 자막 없음
+        if (!videoDetails || !videoDetails.subtitles || videoDetails.subtitles.length === 0) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
-                videoTitle: videoDetailsEn.title || '',
-                subtitle: subtitleText,
-                language: 'en'
+                videoTitle: videoDetails?.title || '',
+                subtitle: '',
+                message: '이 영상에는 자막이 없습니다.'
             });
         }
         
-        const subtitleText = subtitles.map(s => s.text).join('\n');
+        // 자막 텍스트 조합
+        const subtitleText = videoDetails.subtitles
+            .map(item => item.text)
+            .join('\n');
         
         return res.status(200).json({
             success: true,
             videoId: cleanVideoId,
-            videoTitle: videoTitle,
+            videoTitle: videoDetails.title || '',
             subtitle: subtitleText,
-            language: 'ko'
+            language: usedLang
         });
         
     } catch (error) {
@@ -1786,6 +1795,7 @@ async function handleSubtitle(req, res) {
         });
     }
 }
+
 
 // HTML 엔티티 디코딩
 function decodeHtmlEntities(text) {
