@@ -1710,7 +1710,7 @@ function extractVideoId(url) {
     return null;
 }
 
-// 자막 수집 처리 함수
+// 자막 수집 처리 함수 (Innertube API 방식)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
@@ -1736,62 +1736,81 @@ async function handleSubtitle(req, res) {
     }
     
     try {
+        // 1단계: YouTube 페이지에서 INNERTUBE_API_KEY 추출
         const videoUrl = `https://www.youtube.com/watch?v=${cleanVideoId}`;
-        const response = await fetch(videoUrl, {
+        const pageResponse = await fetch(videoUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
             }
         });
         
-        if (!response.ok) {
+        if (!pageResponse.ok) {
             throw new Error('YouTube 페이지를 가져올 수 없습니다.');
         }
         
-        const html = await response.text();
+        const html = await pageResponse.text();
         
-        // 영상 제목 추출
-        let videoTitle = '';
-        const titleMatch = html.match(/"title":"([^"]+)"/);
-        if (titleMatch) {
-            videoTitle = titleMatch[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
+        // API 키 추출
+        const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+        if (!apiKeyMatch) {
+            throw new Error('API 키를 찾을 수 없습니다.');
         }
+        const apiKey = apiKeyMatch[1];
         
-        // 디버깅 정보
-        const debug = {
-            htmlLength: html.length,
-            hasTimedtext: html.includes('timedtext'),
-            hasCaptionTracks: html.includes('captionTracks'),
-            hasBaseUrl: html.includes('baseUrl')
-        };
+        // 2단계: Innertube API로 player 정보 가져오기
+        const playerResponse = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            body: JSON.stringify({
+                context: {
+                    client: {
+                        clientName: 'WEB',
+                        clientVersion: '2.20240101.00.00'
+                    }
+                },
+                videoId: cleanVideoId
+            })
+        });
         
-        // baseUrl 직접 찾기 (한국어 우선 → 영어 → 아무거나)
-        const koMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]*lang=ko[^"]*)"/);
-        const enMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]*lang=en[^"]*)"/);
-        const anyMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
+        const playerData = await playerResponse.json();
         
-        debug.koMatch = !!koMatch;
-        debug.enMatch = !!enMatch;
-        debug.anyMatch = !!anyMatch;
+        // 영상 제목
+        const videoTitle = playerData?.videoDetails?.title || '';
         
-        const subtitleUrlRaw = koMatch?.[1] || enMatch?.[1] || anyMatch?.[1];
+        // 자막 트랙 확인
+        const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
         
-        if (!subtitleUrlRaw) {
+        if (!captionTracks || captionTracks.length === 0) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '이 영상에는 자막이 없습니다.',
-                debug: debug
+                message: '이 영상에는 자막이 없습니다.'
             });
         }
         
-        // \u0026 → & 변환
-        const subtitleUrl = subtitleUrlRaw.replace(/\\u0026/g, '&');
+        // 한국어 자막 우선 → 영어 → 첫 번째
+        let selectedTrack = captionTracks.find(t => t.languageCode === 'ko') ||
+                           captionTracks.find(t => t.languageCode === 'en') ||
+                           captionTracks[0];
         
-        // 자막 가져오기
-        const subtitleResponse = await fetch(subtitleUrl);
+        if (!selectedTrack || !selectedTrack.baseUrl) {
+            return res.status(200).json({
+                success: true,
+                videoId: cleanVideoId,
+                videoTitle: videoTitle,
+                subtitle: '',
+                message: '자막 URL을 찾을 수 없습니다.'
+            });
+        }
+        
+        // 3단계: 자막 가져오기
+        const subtitleResponse = await fetch(selectedTrack.baseUrl);
         
         if (!subtitleResponse.ok) {
             throw new Error('자막을 가져올 수 없습니다.');
@@ -1808,8 +1827,7 @@ async function handleSubtitle(req, res) {
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 내용이 비어있습니다.',
-                debug: debug
+                message: '자막 내용이 비어있습니다.'
             });
         }
         
@@ -1821,16 +1839,12 @@ async function handleSubtitle(req, res) {
             })
             .join('\n');
         
-        // 언어 코드 추출
-        const langMatch = subtitleUrl.match(/lang=([a-z]{2})/);
-        const language = langMatch ? langMatch[1] : 'unknown';
-        
         return res.status(200).json({
             success: true,
             videoId: cleanVideoId,
             videoTitle: videoTitle,
             subtitle: subtitleText,
-            language: language
+            language: selectedTrack.languageCode
         });
         
     } catch (error) {
