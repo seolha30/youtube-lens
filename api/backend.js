@@ -1757,15 +1757,22 @@ async function handleSubtitle(req, res) {
             videoTitle = titleMatch[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
         }
         
-        // 디버깅: HTML에 timedtext가 있는지 확인
-        const hasTimedtext = html.includes('timedtext');
-        const hasCaptions = html.includes('captionTracks');
-        console.log('디버깅 - timedtext 존재:', hasTimedtext, ', captionTracks 존재:', hasCaptions);
+        // 디버깅 정보
+        const debug = {
+            htmlLength: html.length,
+            hasTimedtext: html.includes('timedtext'),
+            hasCaptionTracks: html.includes('captionTracks'),
+            hasBaseUrl: html.includes('baseUrl')
+        };
         
         // baseUrl 직접 찾기 (한국어 우선 → 영어 → 아무거나)
         const koMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]*lang=ko[^"]*)"/);
         const enMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]*lang=en[^"]*)"/);
         const anyMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
+        
+        debug.koMatch = !!koMatch;
+        debug.enMatch = !!enMatch;
+        debug.anyMatch = !!anyMatch;
         
         const subtitleUrlRaw = koMatch?.[1] || enMatch?.[1] || anyMatch?.[1];
         
@@ -1775,7 +1782,8 @@ async function handleSubtitle(req, res) {
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '이 영상에는 자막이 없습니다.'
+                message: '이 영상에는 자막이 없습니다.',
+                debug: debug
             });
         }
         
@@ -1800,7 +1808,8 @@ async function handleSubtitle(req, res) {
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 내용이 비어있습니다.'
+                message: '자막 내용이 비어있습니다.',
+                debug: debug
             });
         }
         
@@ -1825,7 +1834,6 @@ async function handleSubtitle(req, res) {
         });
         
     } catch (error) {
-        console.error('자막 수집 오류:', error);
         return res.status(500).json({
             success: false,
             error: '자막 수집 중 오류가 발생했습니다: ' + error.message
