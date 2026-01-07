@@ -1756,17 +1756,36 @@ async function handleSubtitle(req, res) {
         const html = await pageResponse.text();
         debug.step1_htmlLength = html.length;
         
-        // ytInitialPlayerResponse에서 JSON 추출
-        const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\})\s*;\s*(?:var\s+(?:meta|head)|<\/script|\n)/);
-        debug.step2_hasPlayerMatch = !!playerMatch;
+        // ytInitialPlayerResponse JSON 추출 (중괄호 매칭 방식)
+        const startMarker = 'ytInitialPlayerResponse = ';
+        const startIndex = html.indexOf(startMarker);
+        debug.step2_hasStartMarker = startIndex !== -1;
         
-        if (!playerMatch) {
+        if (startIndex === -1) {
             return res.status(200).json({ success: false, error: 'Player 정보 없음', debug });
         }
         
+        const jsonStart = startIndex + startMarker.length;
+        let depth = 0;
+        let jsonEnd = jsonStart;
+        
+        for (let i = jsonStart; i < html.length; i++) {
+            if (html[i] === '{') depth++;
+            else if (html[i] === '}') {
+                depth--;
+                if (depth === 0) {
+                    jsonEnd = i + 1;
+                    break;
+                }
+            }
+        }
+        
+        const jsonStr = html.substring(jsonStart, jsonEnd);
+        debug.step2_jsonLength = jsonStr.length;
+        
         let playerData;
         try {
-            playerData = JSON.parse(playerMatch[1]);
+            playerData = JSON.parse(jsonStr);
             debug.step2_parseSuccess = true;
         } catch (e) {
             debug.step2_parseSuccess = false;
@@ -1775,6 +1794,7 @@ async function handleSubtitle(req, res) {
         }
         
         const videoTitle = playerData?.videoDetails?.title || '';
+        debug.step2_videoTitle = videoTitle;
         debug.step2_hasVideoDetails = !!playerData?.videoDetails;
         debug.step2_hasCaptions = !!playerData?.captions;
         
