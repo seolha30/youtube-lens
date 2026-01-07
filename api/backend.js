@@ -1,5 +1,4 @@
 // new.js - test.html의 모든 JavaScript 기능을 서버리스 함수로 직접 변환
-const { YoutubeTranscript } = require('youtube-transcript');
 // test.html의 JavaScript 코드를 완전히 그대로 포팅하여 누락 없이 구현
 
 // CORS 헤더 설정 함수
@@ -41,8 +40,6 @@ export default async function handler(req, res) {
                 return await handleAdminAuth(req, res);
             case 'checkAdmin':
                 return await handleCheckAdmin(req, res);
-            case 'subtitle':
-                return await handleSubtitle(req, res);
             default:
                 res.status(400).json({ 
                     success: false, 
@@ -1652,51 +1649,6 @@ async function handleAdminAuth(req, res) {
         res.status(500).json({
             success: false,
             message: '관리자 인증 처리 중 서버 오류가 발생했습니다.'
-        });
-    }
-}
-// 자막 수집 처리 함수
-async function handleSubtitle(req, res) {
-    const { videoId } = req.method === 'GET' ? req.query : req.body;
-    
-    console.log('🎤 자막 수집 시도:', { videoId });
-    
-    if (!videoId) {
-        return res.status(400).json({
-            success: false,
-            error: '비디오 ID가 필요합니다.'
-        });
-    }
-    
-    try {
-        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-        
-        if (!transcript || transcript.length === 0) {
-            return res.status(200).json({
-                success: false,
-                error: '자막이 없습니다.',
-                videoId: videoId
-            });
-        }
-        
-        // 자막 텍스트만 추출해서 합치기
-        const subtitle = transcript.map(item => item.text).join(' ');
-        
-        console.log('✅ 자막 수집 성공:', videoId);
-        
-        res.status(200).json({
-            success: true,
-            subtitle: subtitle,
-            videoId: videoId,
-            videoTitle: `Video ${videoId}`
-        });
-        
-    } catch (error) {
-        console.error('❌ 자막 수집 오류:', error);
-        res.status(200).json({
-            success: false,
-            error: '자막을 가져올 수 없습니다.',
-            videoId: videoId
         });
     }
 }
