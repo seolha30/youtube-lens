@@ -9,8 +9,5 @@
   },
   "keywords": ["youtube", "analytics", "lens"],
   "author": "Seol (Tubelens)",
-  "license": "MIT",
-  "dependencies": {
-    "youtube-transcript": "^1.2.1"
-  }
+  "license": "MIT"
 }
