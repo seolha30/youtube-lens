@@ -1722,7 +1722,7 @@ async function handleSubtitle(req, res) {
         });
     }
     
-    // videoId에서 순수 ID만 추출 (URL이 들어올 경우 대비)
+    // videoId에서 순수 ID만 추출
     let cleanVideoId = videoId;
     if (videoId.includes('youtube') || videoId.includes('youtu.be')) {
         cleanVideoId = extractVideoId(videoId);
@@ -1757,47 +1757,50 @@ async function handleSubtitle(req, res) {
             videoTitle = titleMatch[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
         }
         
-        // captionTracks 배열 추출
-        const tracksMatch = html.match(/"captionTracks":(\[[\s\S]*?\])(?=,"audioTracks"|,"translationLanguages"|,"defaultAudioTrackIndex")/);
+        // ytInitialPlayerResponse에서 자막 정보 추출
+        const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
         
-        if (!tracksMatch) {
+        if (!playerResponseMatch) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 트랙을 찾을 수 없습니다.'
+                message: '플레이어 정보를 찾을 수 없습니다.'
             });
         }
         
-        let captionTracks;
+        let playerResponse;
         try {
-            captionTracks = JSON.parse(tracksMatch[1]);
+            playerResponse = JSON.parse(playerResponseMatch[1]);
         } catch (e) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 정보 파싱 실패'
+                message: '플레이어 정보 파싱 실패'
             });
         }
         
-        if (!captionTracks || captionTracks.length === 0) {
+        // captions 경로 확인
+        const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        
+        if (!captions || captions.length === 0) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '사용 가능한 자막이 없습니다.'
+                message: '이 영상에는 자막이 없습니다.'
             });
         }
         
         // 한국어 자막 우선, 없으면 영어, 없으면 첫 번째 자막
-        let selectedTrack = captionTracks.find(t => t.languageCode === 'ko') ||
-                           captionTracks.find(t => t.languageCode === 'ko-KR') ||
-                           captionTracks.find(t => t.languageCode === 'en') ||
-                           captionTracks[0];
+        let selectedTrack = captions.find(t => t.languageCode === 'ko') ||
+                           captions.find(t => t.languageCode === 'ko-KR') ||
+                           captions.find(t => t.languageCode === 'en') ||
+                           captions[0];
         
         if (!selectedTrack || !selectedTrack.baseUrl) {
             return res.status(200).json({
@@ -1810,7 +1813,7 @@ async function handleSubtitle(req, res) {
         }
         
         // 자막 URL에서 실제 자막 가져오기
-        const subtitleUrl = selectedTrack.baseUrl.replace(/\\u0026/g, '&');
+        const subtitleUrl = selectedTrack.baseUrl;
         const subtitleResponse = await fetch(subtitleUrl);
         
         if (!subtitleResponse.ok) {
