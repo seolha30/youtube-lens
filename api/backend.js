@@ -1710,10 +1710,12 @@ function extractVideoId(url) {
     return null;
 }
 
-// 자막 수집 처리 함수 (Innertube API 방식)
+// 자막 수집 처리 함수 (Innertube API 방식 + 디버깅)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
+    
+    const debug = {};
     
     if (!videoId) {
         return res.status(400).json({
@@ -1745,18 +1747,25 @@ async function handleSubtitle(req, res) {
             }
         });
         
+        debug.step1_status = pageResponse.status;
+        
         if (!pageResponse.ok) {
-            throw new Error('YouTube 페이지를 가져올 수 없습니다.');
+            debug.step1_error = 'YouTube 페이지 요청 실패';
+            return res.status(200).json({ success: false, debug });
         }
         
         const html = await pageResponse.text();
+        debug.step1_htmlLength = html.length;
         
         // API 키 추출
         const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+        debug.step1_hasApiKey = !!apiKeyMatch;
+        
         if (!apiKeyMatch) {
-            throw new Error('API 키를 찾을 수 없습니다.');
+            return res.status(200).json({ success: false, error: 'API 키 없음', debug });
         }
         const apiKey = apiKeyMatch[1];
+        debug.step1_apiKey = apiKey;
         
         // 2단계: Innertube API로 player 정보 가져오기
         const playerResponse = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}`, {
@@ -1776,7 +1785,12 @@ async function handleSubtitle(req, res) {
             })
         });
         
+        debug.step2_status = playerResponse.status;
+        
         const playerData = await playerResponse.json();
+        debug.step2_hasVideoDetails = !!playerData?.videoDetails;
+        debug.step2_hasCaptions = !!playerData?.captions;
+        debug.step2_hasCaptionTracks = !!playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
         
         // 영상 제목
         const videoTitle = playerData?.videoDetails?.title || '';
@@ -1790,14 +1804,21 @@ async function handleSubtitle(req, res) {
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '이 영상에는 자막이 없습니다.'
+                message: '이 영상에는 자막이 없습니다.',
+                debug
             });
         }
+        
+        debug.step2_trackCount = captionTracks.length;
+        debug.step2_languages = captionTracks.map(t => t.languageCode);
         
         // 한국어 자막 우선 → 영어 → 첫 번째
         let selectedTrack = captionTracks.find(t => t.languageCode === 'ko') ||
                            captionTracks.find(t => t.languageCode === 'en') ||
                            captionTracks[0];
+        
+        debug.step2_selectedLang = selectedTrack?.languageCode;
+        debug.step2_hasBaseUrl = !!selectedTrack?.baseUrl;
         
         if (!selectedTrack || !selectedTrack.baseUrl) {
             return res.status(200).json({
@@ -1805,21 +1826,29 @@ async function handleSubtitle(req, res) {
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 URL을 찾을 수 없습니다.'
+                message: '자막 URL을 찾을 수 없습니다.',
+                debug
             });
         }
         
         // 3단계: 자막 가져오기
         const subtitleResponse = await fetch(selectedTrack.baseUrl);
+        debug.step3_status = subtitleResponse.status;
         
         if (!subtitleResponse.ok) {
-            throw new Error('자막을 가져올 수 없습니다.');
+            return res.status(200).json({
+                success: false,
+                error: '자막 가져오기 실패',
+                debug
+            });
         }
         
         const subtitleXml = await subtitleResponse.text();
+        debug.step3_xmlLength = subtitleXml.length;
         
         // XML에서 텍스트만 추출
         const textMatches = subtitleXml.match(/<text[^>]*>([^<]*)<\/text>/g);
+        debug.step3_matchCount = textMatches ? textMatches.length : 0;
         
         if (!textMatches) {
             return res.status(200).json({
@@ -1827,7 +1856,8 @@ async function handleSubtitle(req, res) {
                 videoId: cleanVideoId,
                 videoTitle: videoTitle,
                 subtitle: '',
-                message: '자막 내용이 비어있습니다.'
+                message: '자막 내용이 비어있습니다.',
+                debug
             });
         }
         
@@ -1848,9 +1878,11 @@ async function handleSubtitle(req, res) {
         });
         
     } catch (error) {
+        debug.error = error.message;
         return res.status(500).json({
             success: false,
-            error: '자막 수집 중 오류가 발생했습니다: ' + error.message
+            error: '자막 수집 중 오류가 발생했습니다: ' + error.message,
+            debug
         });
     }
 }
