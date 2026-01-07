@@ -1777,8 +1777,11 @@ async function handleSubtitle(req, res) {
             body: JSON.stringify({
                 context: {
                     client: {
-                        clientName: 'WEB',
-                        clientVersion: '2.20240101.00.00'
+                        clientName: 'ANDROID',
+                        clientVersion: '19.09.37',
+                        androidSdkVersion: 30,
+                        hl: 'ko',
+                        gl: 'KR'
                     }
                 },
                 videoId: cleanVideoId
