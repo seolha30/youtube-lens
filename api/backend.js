@@ -40,8 +40,6 @@ export default async function handler(req, res) {
                 return await handleAdminAuth(req, res);
             case 'checkAdmin':
                 return await handleCheckAdmin(req, res);
-            case 'subtitle':
-                return await handleSubtitle(req, res);
             default:
                 res.status(400).json({ 
                     success: false, 
@@ -1708,85 +1706,4 @@ function extractVideoId(url) {
     }
     
     return null;
-}
-
-
-// 자막 수집 처리 함수 (TubeText 무료 API 사용)
-// 자막 수집 처리 함수 (무료 Transcript API 사용)
-async function handleSubtitle(req, res) {
-    const data = req.method === 'GET' ? req.query : req.body;
-    const { videoId } = data;
-    
-    if (!videoId) {
-        return res.status(400).json({
-            success: false,
-            error: '비디오 ID가 필요합니다.'
-        });
-    }
-    
-    // videoId에서 순수 ID만 추출
-    let cleanVideoId = videoId;
-    if (videoId.includes('youtube') || videoId.includes('youtu.be')) {
-        cleanVideoId = extractVideoId(videoId);
-    }
-    
-    if (!cleanVideoId || cleanVideoId.length !== 11) {
-        return res.status(400).json({
-            success: false,
-            error: '유효하지 않은 비디오 ID입니다.'
-        });
-    }
-    
-    try {
-        // 무료 Transcript API 호출 (POST 방식)
-        const apiUrl = 'https://youtube-transcript-api-tau-one.vercel.app/transcript';
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                video_url: `https://www.youtube.com/watch?v=${cleanVideoId}`
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (!result.transcript) {
-            return res.status(200).json({
-                success: true,
-                videoId: cleanVideoId,
-                videoTitle: '',
-                subtitle: '',
-                message: '이 영상에는 자막이 없습니다.'
-            });
-        }
-        
-        return res.status(200).json({
-            success: true,
-            videoId: cleanVideoId,
-            videoTitle: '',
-            subtitle: result.transcript,
-            language: 'auto'
-        });
-        
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            error: '자막 수집 오류: ' + error.message
-        });
-    }
-}
-
-
-// HTML 엔티티 디코딩
-function decodeHtmlEntities(text) {
-    return text
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&apos;/g, "'")
-        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-        .replace(/\\n/g, '\n')
-        .replace(/\\u0026/g, '&');
 }
