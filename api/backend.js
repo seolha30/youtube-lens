@@ -1757,6 +1757,11 @@ async function handleSubtitle(req, res) {
             videoTitle = titleMatch[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
         }
         
+        // 디버깅: HTML에 timedtext가 있는지 확인
+        const hasTimedtext = html.includes('timedtext');
+        const hasCaptions = html.includes('captionTracks');
+        console.log('디버깅 - timedtext 존재:', hasTimedtext, ', captionTracks 존재:', hasCaptions);
+        
         // baseUrl 직접 찾기 (한국어 우선 → 영어 → 아무거나)
         const koMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]*lang=ko[^"]*)"/);
         const enMatch = html.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]*lang=en[^"]*)"/);
