@@ -1,4 +1,3 @@
-import { getVideoDetails } from 'youtube-caption-extractor';
 // new.js - test.html의 모든 JavaScript 기능을 서버리스 함수로 직접 변환
 // test.html의 JavaScript 코드를 완전히 그대로 포팅하여 누락 없이 구현
 
@@ -1712,7 +1711,7 @@ function extractVideoId(url) {
 }
 
 
-// 자막 수집 처리 함수 (youtube-caption-extractor 패키지 사용)
+// 자막 수집 처리 함수 (TubeText 무료 API 사용)
 async function handleSubtitle(req, res) {
     const data = req.method === 'GET' ? req.query : req.body;
     const { videoId } = data;
@@ -1738,54 +1737,30 @@ async function handleSubtitle(req, res) {
     }
     
     try {
-        // youtube-caption-extractor 패키지 사용 (봇 감지 우회 + 서버리스 최적화)
-        // 한국어(ko) 우선 시도, 실패시 영어(en), 그래도 실패시 자동 감지
-        const langPriority = ['ko', 'en', 'auto'];
-        let videoDetails = null;
-        let usedLang = '';
+        // TubeText 무료 API 호출
+        const apiUrl = `https://tubetext.vercel.app/youtube/transcript?video_id=${cleanVideoId}`;
+        const response = await fetch(apiUrl);
+        const result = await response.json();
         
-        for (const lang of langPriority) {
-            try {
-                if (lang === 'auto') {
-                    // 언어 지정 없이 시도 (자동 감지)
-                    videoDetails = await getVideoDetails({ videoID: cleanVideoId });
-                } else {
-                    videoDetails = await getVideoDetails({ videoID: cleanVideoId, lang: lang });
-                }
-                
-                // 자막이 있으면 성공
-                if (videoDetails && videoDetails.subtitles && videoDetails.subtitles.length > 0) {
-                    usedLang = lang === 'auto' ? 'auto' : lang;
-                    break;
-                }
-            } catch (langError) {
-                // 해당 언어로 실패하면 다음 언어 시도
-                continue;
-            }
-        }
-        
-        // 모든 언어 시도 후에도 자막 없음
-        if (!videoDetails || !videoDetails.subtitles || videoDetails.subtitles.length === 0) {
+        if (!result.success || !result.data) {
             return res.status(200).json({
                 success: true,
                 videoId: cleanVideoId,
-                videoTitle: videoDetails?.title || '',
+                videoTitle: '',
                 subtitle: '',
                 message: '이 영상에는 자막이 없습니다.'
             });
         }
         
-        // 자막 텍스트 조합
-        const subtitleText = videoDetails.subtitles
-            .map(item => item.text)
-            .join('\n');
+        const subtitleText = result.data.full_text || result.data.transcript?.join('\n') || '';
+        const videoTitle = result.data.details?.title || '';
         
         return res.status(200).json({
             success: true,
             videoId: cleanVideoId,
-            videoTitle: videoDetails.title || '',
+            videoTitle: videoTitle,
             subtitle: subtitleText,
-            language: usedLang
+            language: 'auto'
         });
         
     } catch (error) {
