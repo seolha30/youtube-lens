@@ -402,6 +402,10 @@
             position: relative;
         }
 
+        /* 워터마크·세션 남은 시간 표시 숨김 */
+        .table-watermark { display: none !important; }
+        .session-timer { display: none !important; }
+
         /* 워터마크 스타일 */
         .table-watermark {
             position: fixed;
@@ -2211,7 +2215,7 @@
         let userAuthenticated = false;
         let authCache = null;
         // 세션 관리 변수들
-        let sessionDuration = 20 * 60 * 1000; // 20분 (밀리초)
+        let sessionDuration = Infinity; // 사용 시간 제한 없음 (창을 닫기 전까지 사용)
         let sessionStartTime = null;
         let sessionTimer = null;
         let logoutWarningShown = false;
