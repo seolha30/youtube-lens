@@ -1565,6 +1565,54 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
         }
+
+        /* ===== 핸드폰 화면 (2026-10-19) =====
+           768px 이하에서만 적용. 컴퓨터 화면은 그대로.
+           - 위아래로 차례대로 쌓고, 페이지 전체를 손가락으로 내려 보는 방식
+           - 검색 결과 표는 옆으로 밀어서 보기 */
+        @media (max-width: 768px) {
+            html, body { height: auto; min-height: 100%; }
+            body { overflow-x: hidden; }
+
+            .top-nav { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+            .nav-btn { padding: 7px 12px; font-size: 12px; }
+
+            .header { padding: 8px 10px; }
+            .header-content { flex-wrap: wrap; gap: 8px; }
+            .header-left { gap: 8px; }
+            .header-buttons { width: 100%; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+            .header-btn, .logout-btn-header { padding: 6px 10px; font-size: 12px; }
+            .header-btn span { display: inline; }
+
+            .container { flex-direction: column; height: auto !important; }
+            .sidebar {
+                width: 100% !important; min-width: 0 !important; max-width: none !important;
+                height: auto !important; max-height: none !important;
+                border-right: none; border-bottom: 1px solid #444;
+                overflow: visible;
+            }
+            .form-row { flex-wrap: wrap; }
+            .form-row .form-group { min-width: 0; flex: 1 1 45%; }
+            input, select, textarea { font-size: 16px !important; }   /* 아이폰에서 칸 누를 때 화면 확대 막기 */
+            .btn { min-height: 40px; }
+
+            .main-content { overflow: visible; }
+            .toolbar { padding: 10px; }
+            .toolbar-group { flex-wrap: wrap; width: 100%; }
+            .url-input { width: 100% !important; max-width: none !important; flex: 1 1 100%; }
+
+            .results-container {
+                overflow-x: auto; overflow-y: visible;
+                -webkit-overflow-scrolling: touch;
+                min-height: 50vh;
+            }
+            .results-table { min-width: 980px; font-size: 11px; }
+            .results-table th, .results-table td { padding: 6px 4px; }
+            .thumbnail { width: 88px; height: 50px; }
+
+            .auth-modal > div, .logout-confirm-content { max-width: 92vw; }
+        }
+
     </style>
 </head>
 <body>
@@ -5571,6 +5619,23 @@
                 }
             }
         });
+    </script>
+
+    <script>
+        // 핸드폰에서 검색이 끝나면 결과 표 쪽으로 자동으로 내려가기 (2026-10-19)
+        (function () {
+            if (typeof displayResults !== "function") return;
+            var orig = displayResults;
+            displayResults = function (results) {
+                orig(results);
+                try {
+                    if (window.innerWidth <= 768 && results && results.length) {
+                        var t = document.querySelector(".main-content");
+                        if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                } catch (e) {}
+            };
+        })();
     </script>
 </body>
 </html>
